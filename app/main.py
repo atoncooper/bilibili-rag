@@ -37,10 +37,17 @@ async def lifespan(app: FastAPI):
     ensure_directories()
     await init_db()
     logger.info("✅ 数据库初始化完成")
-    
+
+    # 初始化 QueryRewriter
+    from app.services.query import QueryRewriter
+    app.state.rewriter = QueryRewriter()
+    logger.info("[QUERY_REWRITE] QueryRewriter initialized")
+
     yield
-    
+
     # 关闭时
+    await app.state.rewriter.close()
+    logger.info("[QUERY_REWRITE] QueryRewriter shutdown")
     logger.info("👋 应用关闭")
 
 

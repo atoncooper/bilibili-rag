@@ -2,10 +2,12 @@
 Bilibili RAG 知识库系统
 对话路由 - 智能问答
 """
-import re
+import asyncio
 import json
+import re
+from collections import defaultdict
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from sqlalchemy import select, func, or_
@@ -17,6 +19,7 @@ from app.database import get_db
 from app.models import ChatRequest, ChatResponse, FavoriteFolder, FavoriteVideo, VideoCache
 from app.config import settings
 from app.routers.knowledge import get_rag_service
+from app.services.query import RewriteResult, RewriteType, CONFIDENCE_THRESHOLD
 
 router = APIRouter(prefix="/chat", tags=["对话"])
 
@@ -237,6 +240,134 @@ def _filter_docs_by_keywords(docs: List[Document], question: str) -> List[Docume
             filtered.append(doc)
     return filtered
 
+
+def _merge_and_deduplicate(*doc_lists, per_video_k: int = 2) -> List[Document]:
+    """
+    合并多路检索结果，按相关性分数降序。
+
+    策略：分组 Top-K（而非全局 bvid 去重）
+    - 按 bvid 分组
+    - 每组内按 score 降序取 top-K
+    - 所有组合并后全局按 score 降序
+
+    为什么不用全局去重？
+    - 一个视频 = 多语义片段（chunk）
+    - 全局去重会丢失同视频的其他相关片段
+    - 分组 Top-K 保证每个视频最多 per_video_k 个片段
+    """
+    # 按 bvid 分组（Document 对象使用 .metadata.get()）
+    grouped = defaultdict(list)
+    for docs in doc_lists:
+        for doc in docs:
+            bvid = doc.metadata.get("bvid") if hasattr(doc, "metadata") else doc.get("bvid")
+            if bvid:
+                grouped[bvid].append(doc)
+
+    # 每组内按 score 降序取 top-K
+    final_docs = []
+    for bvid, group in grouped.items():
+        group_sorted = sorted(group, key=lambda x: x.metadata.get("score", 0) if hasattr(x, "metadata") else x.get("score", 0), reverse=True)
+        final_docs.extend(group_sorted[:per_video_k])
+
+    # 全局按 score 降序
+    final_docs.sort(key=lambda x: x.metadata.get("score", 0) if hasattr(x, "metadata") else x.get("score", 0), reverse=True)
+    return final_docs
+
+
+async def _vector_search_with_rewrites(
+    question: str,
+    rewrite_result: RewriteResult,
+    bvids: Optional[List[str]],
+    k: int = 5,
+) -> tuple[str, List[dict]]:
+    """
+    根据改写结果选择检索 query。
+    策略优先级：step_back > sub_queries。
+    只有命中策略且置信度 >= CONFIDENCE_THRESHOLD 时才使用改写检索。
+    """
+    rag = get_rag_service()
+    rewrites = rewrite_result.rewrites
+
+    if not rewrites:
+        # 无改写结果，降级为直接检索
+        docs = rag.search(question, k=k, bvids=bvids if bvids else None)
+        return _build_context_from_docs(docs)
+
+    rewrite = rewrites[0]  # 只有第一个（最高置信度）策略会被使用
+
+    # === 策略1：后退提示词 → 泛化 + 具体 双路并发检索 ===
+    if rewrite.type == RewriteType.STEP_BACK and rewrite.confidence >= CONFIDENCE_THRESHOLD:
+        # 类型安全访问（dataclass 属性）
+        step_back_query = rewrite.metadata.step_back_query
+        specific_query = rewrite.metadata.specific_query
+
+        logger.info(
+            f"[QUERY_REWRITE] step_back confidence={rewrite.confidence}\n"
+            f"  原始问题: {question}\n"
+            f"  泛化 query: {step_back_query}\n"
+            f"  具体 query: {specific_query}\n"
+            f"  并发检索双路..."
+        )
+
+        # 并发执行，不在关键路径上增加延迟
+        general_docs, specific_docs = await asyncio.gather(
+            rag.search(step_back_query, k=k, bvids=bvids if bvids else None),
+            rag.search(specific_query, k=k, bvids=bvids if bvids else None),
+        )
+        logger.info(
+            f"[QUERY_REWRITE] 泛化召回: {len(general_docs)} docs, "
+            f"具体召回: {len(specific_docs)} docs"
+        )
+        docs = _merge_and_deduplicate(general_docs, specific_docs)
+        logger.info(f"[QUERY_REWRITE] 合并后总召回: {len(docs)} docs")
+        return _build_context_from_docs(docs)
+
+    # === 策略2：子查询拆分 → 所有子 query 并发检索 ===
+    if rewrite.type == RewriteType.SUB_QUERIES and rewrite.confidence >= CONFIDENCE_THRESHOLD:
+        # 类型安全访问（dataclass 属性）
+        sub_queries = rewrite.metadata.sub_queries
+
+        logger.info(
+            f"[QUERY_REWRITE] sub_queries confidence={rewrite.confidence}\n"
+            f"  原始问题: {question}\n"
+            f"  拆分数量: {len(sub_queries)} 路\n"
+            f"  子查询列表: {sub_queries}\n"
+            f"  并发检索..."
+        )
+
+        # 并发执行所有子 query 检索
+        results = await asyncio.gather(*[
+            rag.search(q, k=k, bvids=bvids if bvids else None) for q in sub_queries
+        ])
+        for i, (q, r) in enumerate(zip(sub_queries, results)):
+            logger.info(f"[QUERY_REWRITE] 子查询[{i+1}] '{q}' 召回: {len(r)} docs")
+        docs = _merge_and_deduplicate(*results)
+        logger.info(f"[QUERY_REWRITE] 合并后总召回: {len(docs)} docs")
+        return _build_context_from_docs(docs)
+
+    # === 兜底：直接检索 ===
+    logger.warning(
+        f"[QUERY_REWRITE] 未命中任何改写策略，使用原始 question 直接检索\n"
+        f"  rewrite.type={rewrite.type}, confidence={rewrite.confidence}"
+    )
+    docs = rag.search(question, k=k, bvids=bvids if bvids else None)
+    return _build_context_from_docs(docs)
+
+
+def _build_context_from_docs(docs: List[Document]) -> tuple[str, List[dict]]:
+    """从文档列表构建 context 和 sources"""
+    context_parts, sources, seen_bvids = [], [], set()
+    for doc in docs:
+        bvid = doc.metadata.get("bvid", "")
+        title = doc.metadata.get("title", "")
+        content = doc.page_content.strip()
+        if content:
+            context_parts.append(f"【{title}】\n{content}")
+        if bvid and bvid not in seen_bvids:
+            seen_bvids.add(bvid)
+            sources.append({"bvid": bvid, "title": title, "url": f"https://www.bilibili.com/video/{bvid}"})
+    return "\n\n---\n\n".join(context_parts), sources
+
 async def _is_related_to_collection(db: AsyncSession, folder_ids: List[int], question: str) -> bool:
     """判断问题是否与收藏夹内容有关"""
     if not folder_ids:
@@ -377,7 +508,7 @@ async def _get_video_titles_context(db: AsyncSession, folder_ids: List[int], lim
     context_parts = [f"【{folder_name}】\n" + "\n".join(videos) for folder_name, videos in grouped.items()]
     return "\n\n".join(context_parts)
 
-async def _prepare_messages(request: ChatRequest, db: AsyncSession) -> tuple[list[dict], List[dict], str]:
+async def _prepare_messages(request: ChatRequest, db: AsyncSession, rewrite_result: Optional[RewriteResult] = None) -> tuple[list[dict], List[dict], str, Optional[RewriteResult]]:
     """准备 LLM 消息与来源信息"""
     question = request.question.strip()
     rag = get_rag_service()
@@ -411,67 +542,67 @@ async def _prepare_messages(request: ChatRequest, db: AsyncSession) -> tuple[lis
             if not context:
                 context = "（暂无已入库的视频信息，请提醒用户可能需要先进行入库操作）"
             messages = _build_fallback_messages(context, question)
-            return messages, sources, question
+            return messages, sources, question, rewrite_result
         messages = _build_direct_messages(question)
-        return messages, [], question
+        return messages, [], question, rewrite_result
     # 3) 直接回答
     if route == "direct":
         title_context = await _get_video_titles_context(db, folder_ids, limit=50)
         messages = _build_direct_messages_with_context(title_context, question) if title_context else _build_direct_messages(question)
-        return messages, [], question
+        return messages, [], question, rewrite_result
     # 4) 列表类问题
     if route == "db_list":
         if related is None:
             related = await _is_related_to_collection(db, folder_ids, question)
         if not related and not is_collection_intent:
-            return _build_direct_messages(question), [], question
+            return _build_direct_messages(question), [], question, rewrite_result
         context, sources = await _get_video_context(db, folder_ids, include_content=False, limit=50)
         if not context:
-            return _build_fallback_messages("（暂无信息，请入库）", question), sources, question
-        return _build_db_list_messages(context, question), sources, question
+            return _build_fallback_messages("（暂无信息，请入库）", question), sources, question, rewrite_result
+        return _build_db_list_messages(context, question), sources, question, rewrite_result
     # 5) 总结类问题
     if route == "db_content":
         if related is None:
             related = await _is_related_to_collection(db, folder_ids, question)
         if not related and not is_collection_intent:
-            return _build_direct_messages(question), [], question
+            return _build_direct_messages(question), [], question, rewrite_result
         context, sources = await _get_video_context(db, folder_ids, include_content=True, limit=None)
         if not context:
-            return _build_fallback_messages("（暂无信息，请入库）", question), sources, question
-        return _build_db_summary_messages(context, question), sources, question
-    # 6) 检查相关性
+            return _build_fallback_messages("（暂无信息，请入库）", question), sources, question, rewrite_result
+        return _build_db_summary_messages(context, question), sources, question, rewrite_result
+    # 6) 检查相关性（使用改写后的 query 以提升语义匹配）
     if related is None:
-        related = await _is_related_to_collection(db, folder_ids, question)
+        rewrite_query = rewrite_result.rewrites[0].query if (rewrite_result and rewrite_result.rewrites) else question
+        related = await _is_related_to_collection(db, folder_ids, rewrite_query)
     if not related and not is_collection_intent:
-        return _build_direct_messages(question), [], question
-    # 7) 向量检索
-    docs = []
+        return _build_direct_messages(question), [], question, rewrite_result
+    # 7) 向量检索（使用 Query 改写）
     try:
-        docs = rag.search(question, k=5, bvids=bvids if bvids else None)
+        context, sources = await _vector_search_with_rewrites(
+            question, rewrite_result, bvids, k=5
+        )
+        if context:
+            return _build_rag_messages(context, question), sources, question, rewrite_result
     except Exception as e:
         logger.warning(f"向量检索失败: {e}")
-    if docs:
-        filtered_docs = _filter_docs_by_keywords(docs, question)
-        docs = filtered_docs if filtered_docs else docs
-        context_parts, sources, seen_bvids = [], [], set()
-        for doc in docs:
-            bvid, title, content = doc.metadata.get("bvid", ""), doc.metadata.get("title", ""), doc.page_content.strip()
-            if content: context_parts.append(f"【{title}】\n{content}")
-            if bvid and bvid not in seen_bvids:
-                seen_bvids.add(bvid)
-                sources.append({"bvid": bvid, "title": title, "url": f"https://www.bilibili.com/video/{bvid}"})
-        return _build_rag_messages("\n\n---\n\n".join(context_parts), question), sources, question
     # 兜底
     context, sources = await _get_video_context(db, folder_ids, include_content=False, limit=50)
-    return _build_fallback_messages(context or "（暂无入库信息）", question), sources, question
+    return _build_fallback_messages(context or "（暂无入库信息）", question), sources, question, rewrite_result
 
 @router.post("/ask", response_model=ChatResponse)
-async def ask_question(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """智能问答"""
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
     try:
-        messages, sources, _ = await _prepare_messages(request, db)
+        # === Query 改写 ===
+        rewriter = http_request.app.state.rewriter
+        rewrite_result = await rewriter.rewrite(request.question.strip())
+        logger.info(f"[QUERY_REWRITE] original={request.question.strip()}")
+        logger.info(f"[QUERY_REWRITE] rewrites={[(r.type.value, r.query[:50], r.confidence) for r in rewrite_result.rewrites]}")
+        logger.info(f"[QUERY_REWRITE] suggested_route={rewrite_result.suggested_route}, needs_rewrite={rewrite_result.needs_rewrite}")
+
+        messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
         client = _get_llm_client()
         response = client.chat.completions.create(model=settings.llm_model, messages=messages, temperature=0.5)
         return ChatResponse(answer=response.choices[0].message.content or "", sources=sources[:5])
@@ -481,19 +612,42 @@ async def ask_question(request: ChatRequest, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=500, detail=f"问答失败: {str(e)}")
 
 @router.post("/ask/stream")
-async def ask_question_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def ask_question_stream(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """流式问答"""
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
     try:
-        messages, sources, _ = await _prepare_messages(request, db)
+        # === Query 改写 ===
+        rewriter = http_request.app.state.rewriter
+        rewrite_result = await rewriter.rewrite(request.question.strip())
+        logger.info(f"[QUERY_REWRITE] original={request.question.strip()}")
+        logger.info(f"[QUERY_REWRITE] rewrites={[(r.type.value, r.query[:50], r.confidence) for r in rewrite_result.rewrites]}")
+        logger.info(f"[QUERY_REWRITE] suggested_route={rewrite_result.suggested_route}, needs_rewrite={rewrite_result.needs_rewrite}")
+
+        messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
         client = _get_llm_client()
+
+        # 获取 rewrite 信息用于附加到 sources
+        rewrite = rewrite_result.rewrites[0] if rewrite_result.rewrites else None
+        rewrite_info = None
+        if rewrite:
+            rewrite_info = {
+                "used_rewrite": rewrite.type.value,
+                "rewrite_query": rewrite.query[:50] if rewrite.query else None,
+                "confidence": rewrite.confidence,
+            }
+
         def generate():
             stream = client.chat.completions.create(model=settings.llm_model, messages=messages, temperature=0.5, stream=True)
             for chunk in stream:
                 delta = chunk.choices[0].delta
                 if delta and delta.content: yield delta.content
-            yield f"\n[[SOURCES_JSON]]{json.dumps(sources, ensure_ascii=False)}"
+            # 附加 rewrite 信息到 sources
+            sources_with_rewrite = {
+                "sources": sources,
+                "rewrite_info": rewrite_info,
+            }
+            yield f"\n[[SOURCES_JSON]]{json.dumps(sources_with_rewrite, ensure_ascii=False)}"
         return StreamingResponse(generate(), media_type="text/plain; charset=utf-8")
     except HTTPException: raise
     except Exception as e:
