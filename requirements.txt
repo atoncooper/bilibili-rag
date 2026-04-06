@@ -22,6 +22,10 @@ qrcode[pil]==7.4.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
+packaging>=24.0
+
+# Cache
+cachetools==5.5.0
 
 # Logging
 loguru==0.7.2
