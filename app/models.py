@@ -170,3 +170,19 @@ class ChatResponse(BaseModel):
     """对话响应"""
     answer: str
     sources: list[dict]  # 来源视频列表
+
+
+class VideoPageInfo(BaseModel):
+    """单个分P信息"""
+    cid: int
+    page: int  # 1-based
+    title: str  # B站 part 字段
+    duration: int
+
+
+class VideoPagesResponse(BaseModel):
+    """GET /api/knowledge/video/{bvid}/pages 响应"""
+    bvid: str
+    title: str
+    pages: list[VideoPageInfo]
+    page_count: int
