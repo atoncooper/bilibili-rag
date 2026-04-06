@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   FavoriteFolder,
   Video,
+  VideoPageInfo,
   favoritesApi,
   knowledgeApi,
   BuildStatus,
@@ -30,6 +31,12 @@ export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange
   const [organizeLoading, setOrganizeLoading] = useState(false);
   const [organizePreview, setOrganizePreview] = useState<OrganizePreviewResponse | null>(null);
   const [organizeMessage, setOrganizeMessage] = useState<string | null>(null);
+
+  // 分P展开状态（key: bvid）
+  const [expandedVideos, setExpandedVideos] = useState<Set<string>>(new Set());
+
+  // 分P数据缓存（key: bvid）
+  const [pageCache, setPageCache] = useState<Record<string, VideoPageInfo[]>>({});
 
   // 加载收藏夹列表（从B站获取）
   const loadFolders = async () => {
@@ -74,6 +81,28 @@ export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange
     setMessage(null);
     await loadFolders();
     await loadStatuses();
+  };
+
+  // 处理视频项点击（展开分P列表 + 按需获取分P数据）
+  const handleVideoClick = async (bvid: string) => {
+    const isExpanded = expandedVideos.has(bvid);
+
+    // 1. 切换展开状态
+    setExpandedVideos((prev) => {
+      const next = new Set(prev);
+      isExpanded ? next.delete(bvid) : next.add(bvid);
+      return next;
+    });
+
+    // 2. 未展开且未缓存时请求分P数据
+    if (!isExpanded && !pageCache[bvid]) {
+      try {
+        const data = await knowledgeApi.getVideoPages(bvid);
+        setPageCache((prev) => ({ ...prev, [bvid]: data.pages }));
+      } catch (e) {
+        console.error("[SourcesPanel] 获取分P失败:", e);
+      }
+    }
   };
 
   const openOrganizePreview = async (folderId: number) => {
@@ -305,12 +334,41 @@ export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange
                         ) : f.videos?.length === 0 ? (
                           <div className="text-xs text-[var(--muted)]">暂无视频</div>
                         ) : (
-                          f.videos?.map((v) => (
-                            <div key={v.bvid} className="video-item">
-                              <span className="text-[var(--accent)]">▶</span>
-                              <span className="truncate" title={v.title}>{v.title}</span>
-                            </div>
-                          ))
+                          f.videos?.map((v) => {
+                            const isVideoExpanded = expandedVideos.has(v.bvid);
+                            const pages = pageCache[v.bvid];
+                            return (
+                              <div key={v.bvid}>
+                                <div
+                                  className="video-item cursor-pointer"
+                                  onClick={() => handleVideoClick(v.bvid)}
+                                >
+                                  <span className="text-[var(--accent)]">
+                                    {isVideoExpanded ? "▼" : "▶"}
+                                  </span>
+                                  <span className="truncate" title={v.title}>{v.title}</span>
+                                  {v.page_count && v.page_count > 1 && (
+                                    <span className="ml-1 text-xs text-[var(--muted)]">({v.page_count}P)</span>
+                                  )}
+                                </div>
+                                {isVideoExpanded && pages && (
+                                  <div className="pl-4 mt-1 space-y-1">
+                                    {pages.map((p) => (
+                                      <div
+                                        key={`${v.bvid}-${p.page}`}
+                                        className="text-xs flex items-center gap-1 cursor-pointer hover:text-[var(--accent)]"
+                                        onClick={() => window.open(`https://www.bilibili.com/video/${v.bvid}?p=${p.page}`)}
+                                      >
+                                        <span className="text-[var(--accent)]">▶</span>
+                                        <span>P{p.page}:</span>
+                                        <span className="truncate">{p.title}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     )}

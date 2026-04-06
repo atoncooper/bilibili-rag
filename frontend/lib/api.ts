@@ -76,6 +76,21 @@ export interface Video {
     play_count?: number;
     intro?: string;
     is_selected: boolean;
+    page_count?: number;
+}
+
+export interface VideoPageInfo {
+    cid: number;
+    page: number;       // 1-based
+    title: string;     // B站 part 字段
+    duration: number;
+}
+
+export interface VideoPagesResponse {
+    bvid: string;
+    title: string;
+    pages: VideoPageInfo[];
+    page_count: number;
 }
 
 export interface FavoriteVideosResponse {
@@ -274,6 +289,10 @@ export const knowledgeApi = {
     // 删除视频
     deleteVideo: (bvid: string) =>
         request<{ message: string }>(`/knowledge/video/${bvid}`, { method: "DELETE" }),
+
+    // 获取视频分P列表
+    getVideoPages: (bvid: string) =>
+        request<VideoPagesResponse>(`/knowledge/video/${bvid}/pages`),
 };
 
 // 对话相关
