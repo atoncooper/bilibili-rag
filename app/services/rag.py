@@ -117,13 +117,20 @@ class RAGService:
             ("human", "{content}")
         ])
     
-    def add_video_content(self, video: VideoContent) -> int:
+    def add_video_content(
+        self,
+        video: VideoContent,
+        page_index: int = 0,
+        page_title: Optional[str] = None,
+    ) -> int:
         """
         添加单个视频内容到向量库
-        
+
         Args:
             video: VideoContent 对象
-            
+            page_index: 分P序号（0-based），默认 0
+            page_title: 分P标题，默认 None
+
         Returns:
             添加的文档块数量
         """
@@ -175,9 +182,11 @@ class RAGService:
                 metadata={
                     "bvid": video.bvid,
                     "title": title,
+                    "page_index": page_index,
+                    "page_title": page_title or title,
                     "source": video.source.value,
                     "chunk_index": i,
-                    "url": f"https://www.bilibili.com/video/{video.bvid}"
+                    "url": f"https://www.bilibili.com/video/{video.bvid}?p={page_index + 1}"
                 }
             )
             documents.append(doc)

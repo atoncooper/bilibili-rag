@@ -3,7 +3,7 @@ Bilibili RAG 知识库系统
 
 视频内容获取服务 - 二级降级策略
 """
-from typing import Optional
+from typing import Optional, List, TypedDict
 from urllib.parse import urlparse
 import asyncio
 import math
@@ -16,6 +16,15 @@ from loguru import logger
 from app.models import VideoContent, ContentSource
 from app.services.bilibili import BilibiliService
 from app.services.asr import ASRService
+
+
+class PageVideoContent(TypedDict):
+    """单P视频内容（用于 fetch_page_content 返回）"""
+    bvid: str
+    title: str
+    content: Optional[str]
+    source: str
+    audio_url: Optional[str]
 
 
 class ContentFetcher:
@@ -97,6 +106,60 @@ class ContentFetcher:
             title=title,
             content=basic_content,
             source=ContentSource.BASIC_INFO
+        )
+
+    async def fetch_page_content(
+        self,
+        bvid: str,
+        cid: int,
+        page_title: str = None,
+    ) -> PageVideoContent:
+        """
+        获取单P视频内容，返回 PageVideoContent（含 audio_url 供 ASR 使用）
+
+        与 fetch_content 逻辑相同，但 title 使用 page_title
+        """
+        # 获取音频 URL
+        audio_url = await self.bili.get_audio_url(bvid, cid)
+        if not audio_url:
+            logger.info(f"[{bvid}] 未获取到音频 URL (cid={cid})")
+            return PageVideoContent(
+                bvid=bvid,
+                title=page_title or "未知标题",
+                content=None,
+                source="unknown",
+                audio_url=None,
+            )
+
+        # 探测音频 URL 可达性
+        status = await self._probe_audio_url(bvid, audio_url)
+        text = None
+
+        if status is not None and status < 400:
+            logger.info(f"[{bvid}] 音频 URL 可达，使用 Transcription")
+            text = await self.asr.transcribe_url(audio_url)
+        else:
+            logger.info(f"[{bvid}] 音频 URL 不可达，尝试本地下载")
+            text = await self._try_asr_with_local_audio(bvid, cid, audio_url)
+
+        if text and len(text) >= 50:
+            preview = text[:120].replace("\n", " ").strip()
+            logger.info(f"[{bvid}] ASR 成功，长度={len(text)}，预览：{preview}")
+            return PageVideoContent(
+                bvid=bvid,
+                title=page_title or "未知标题",
+                content=text,
+                source=ContentSource.ASR,
+                audio_url=audio_url,
+            )
+
+        # ASR 失败时返回音频 URL（让调用方决定如何处理）
+        return PageVideoContent(
+            bvid=bvid,
+            title=page_title or "未知标题",
+            content=None,
+            source="asr_fallback",
+            audio_url=audio_url,
         )
 
     async def _try_asr(self, bvid: str, cid: int) -> Optional[str]:
