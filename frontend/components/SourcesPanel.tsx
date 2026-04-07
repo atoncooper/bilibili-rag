@@ -17,9 +17,10 @@ interface Props {
   sessionId: string;
   onBuildDone?: () => void;
   onSelectionChange?: (folderIds: number[]) => void;
+  onOpenASR?: (bvid: string, cid: number, pageTitle: string) => void;
 }
 
-export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange }: Props) {
+export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange, onOpenASR }: Props) {
   const [folders, setFolders] = useState<(FavoriteFolder & { videos?: Video[]; expanded?: boolean; loading?: boolean; count_source?: "bili" | "filtered" | "db" })[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,11 @@ export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange
     setMessage(null);
     await loadFolders();
     await loadStatuses();
+  };
+
+  // 打开 ASR 弹窗
+  const handleASRClick = (bvid: string, cid: number, pageTitle: string) => {
+    onOpenASR?.(bvid, cid, pageTitle || `P${cid}`);
   };
 
   // 处理视频项点击（展开分P列表 + 按需获取分P数据）
@@ -352,16 +358,38 @@ export default function SourcesPanel({ sessionId, onBuildDone, onSelectionChange
                                   )}
                                 </div>
                                 {isVideoExpanded && pages && (
-                                  <div className="pl-4 mt-1 space-y-1">
+                                  <div className="pl-4 mt-1 space-y-1 overflow-hidden">
                                     {pages.map((p) => (
                                       <div
                                         key={`${v.bvid}-${p.page}`}
-                                        className="text-xs flex items-center gap-1 cursor-pointer hover:text-[var(--accent)]"
-                                        onClick={() => window.open(`https://www.bilibili.com/video/${v.bvid}?p=${p.page}`)}
+                                        className="text-xs flex items-center gap-1 cursor-pointer hover:text-[var(--accent)] min-w-0"
                                       >
-                                        <span className="text-[var(--accent)]">▶</span>
-                                        <span>P{p.page}:</span>
-                                        <span className="truncate">{p.title}</span>
+                                        <span
+                                          className="text-[var(--accent)]"
+                                          onClick={() => window.open(`https://www.bilibili.com/video/${v.bvid}?p=${p.page}`)}
+                                        >
+                                          ▶
+                                        </span>
+                                        <span
+                                          onClick={() => window.open(`https://www.bilibili.com/video/${v.bvid}?p=${p.page}`)}
+                                        >
+                                          P{p.page}:
+                                        </span>
+                                        <span
+                                          className="truncate flex-1"
+                                          onClick={() => window.open(`https://www.bilibili.com/video/${v.bvid}?p=${p.page}`)}
+                                        >
+                                          {p.title}
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleASRClick(v.bvid, p.cid, `P${p.page}: ${p.title}`);
+                                          }}
+                                          className="ml-2 text-[var(--accent)] hover:underline text-xs whitespace-nowrap"
+                                        >
+                                          转文字
+                                        </button>
                                       </div>
                                     ))}
                                   </div>

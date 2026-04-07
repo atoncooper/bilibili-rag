@@ -5,6 +5,7 @@ import LoginModal from "@/components/LoginModal";
 import DemoFlowModal from "@/components/DemoFlowModal";
 import SourcesPanel from "@/components/SourcesPanel";
 import ChatPanel from "@/components/ChatPanel";
+import ASRViewerModal from "@/components/ASRViewerModal";
 import { UserInfo, authApi } from "@/lib/api";
 
 export default function Home() {
@@ -14,6 +15,14 @@ export default function Home() {
   const [showDemo, setShowDemo] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
+
+  // ASR 弹窗状态
+  const [asrModal, setAsrModal] = useState<{
+    isOpen: boolean;
+    bvid: string;
+    cid: number;
+    pageTitle: string;
+  }>({ isOpen: false, bvid: "", cid: 0, pageTitle: "" });
 
   // 拖拽调整宽度
   const [leftWidth, setLeftWidth] = useState(320);
@@ -78,6 +87,14 @@ export default function Home() {
     setUser(null);
     localStorage.removeItem("bili_session");
     localStorage.removeItem("bili_user");
+  };
+
+  const onOpenASR = (bvid: string, cid: number, pageTitle: string) => {
+    setAsrModal({ isOpen: true, bvid, cid, pageTitle });
+  };
+
+  const onCloseASR = () => {
+    setAsrModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   return (
@@ -163,6 +180,7 @@ export default function Home() {
                 sessionId={session}
                 onBuildDone={() => setStatsKey((v) => v + 1)}
                 onSelectionChange={setSelectedFolderIds}
+                onOpenASR={onOpenASR}
               />
             </aside>
 
@@ -190,6 +208,15 @@ export default function Home() {
 
       <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={onLogin} />
       <DemoFlowModal isOpen={showDemo} onClose={() => setShowDemo(false)} />
+      {asrModal.isOpen && (
+        <ASRViewerModal
+          isOpen={asrModal.isOpen}
+          onClose={onCloseASR}
+          bvid={asrModal.bvid}
+          cid={asrModal.cid}
+          pageTitle={asrModal.pageTitle}
+        />
+      )}
     </div>
   );
 }
