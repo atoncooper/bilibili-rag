@@ -13,6 +13,7 @@ from app.config import settings, ensure_directories
 from app.database import init_db
 from app.routers import auth, favorites, knowledge, chat
 from app.routers.asr import router as asr_router
+from app.routers.vector_page import router as vector_page_router
 
 
 # 配置日志
@@ -43,6 +44,28 @@ async def lifespan(app: FastAPI):
     from app.services.query import QueryRewriter
     app.state.rewriter = QueryRewriter()
     logger.info("[QUERY_REWRITE] QueryRewriter initialized")
+
+    # === 崩溃恢复：扫描 pending 向量化任务 ===
+    import asyncio
+    from app.services.task_store import SQLiteTaskPersistence
+    from app.services.vector_page_service import VectorPageService
+
+    task_store = SQLiteTaskPersistence()
+    vector_service = VectorPageService(task_store)
+    pending = await task_store.list_pending("vec_page")
+
+    if pending:
+        logger.info(f"[STARTUP] 发现 {len(pending)} 个未完成的向量化任务，开始恢复...")
+        for task in pending:
+            asyncio.create_task(
+                vector_service.process_page_vectorization(
+                    task_id=task["task_id"],
+                    bvid=task["target"]["bvid"],
+                    cid=task["target"]["cid"],
+                    page_index=task["target"]["page_index"],
+                    page_title=task["target"].get("page_title"),
+                )
+            )
 
     yield
 
@@ -94,6 +117,7 @@ app.include_router(favorites.router)
 app.include_router(knowledge.router)
 app.include_router(chat.router)
 app.include_router(asr_router)
+app.include_router(vector_page_router)
 
 
 @app.get("/")
