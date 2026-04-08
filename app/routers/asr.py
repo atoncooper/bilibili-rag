@@ -88,9 +88,9 @@ async def create_asr(
     - 已存在且 is_processed=true → 直接返回
     - 不存在 → 创建记录 + 后台任务
     """
-    # 查询是否已存在
+    # 查询是否已存在（唯一约束是 bvid+page_index，非 bvid+cid）
     result = await db.execute(
-        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.cid == req.cid)
+        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.page_index == req.page_index)
     )
     existing = result.scalar_one_or_none()
 
@@ -142,7 +142,7 @@ async def update_asr_content(
     手动编辑更新（覆盖，不新建版本）
     """
     result = await db.execute(
-        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.cid == req.cid)
+        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.page_index == req.page_index)
     )
     page = result.scalar_one_or_none()
 
@@ -169,9 +169,9 @@ async def reasr(
     """
     强制重新 ASR（新建版本）
     """
-    # 查询现有记录
+    # 查询现有记录（唯一约束是 bvid+page_index，非 bvid+cid）
     result = await db.execute(
-        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.cid == req.cid)
+        select(VideoPage).where(VideoPage.bvid == req.bvid, VideoPage.page_index == req.page_index)
     )
     page = result.scalar_one_or_none()
 
