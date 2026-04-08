@@ -206,6 +206,12 @@ class VideoPage(Base):
     is_processed = Column(Boolean, default=False)  # ASR 是否完成
     version = Column(Integer, default=1)  # 当前版本号
 
+    # 向量化状态（v2 新增）
+    is_vectorized = Column(String(20), default="pending")  # pending / processing / done / failed
+    vectorized_at = Column(DateTime, nullable=True)
+    vector_chunk_count = Column(Integer, default=0)
+    vector_error = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -236,6 +242,24 @@ class VideoPageVersion(Base):
     )
 
 
+class AsyncTask(Base):
+    """通用异步任务表"""
+    __tablename__ = 'async_tasks'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String(64), unique=True, index=True, nullable=False)
+    task_type = Column(String(20), nullable=False)  # vec_page / asr / ...
+    target = Column(JSON, nullable=False)  # {"bvid": "BV1xx", "cid": 123, "page_index": 0}
+    status = Column(String(20), default="pending")  # pending / processing / done / failed
+    progress = Column(Integer, default=0)
+    steps = Column(JSON, nullable=True)  # [{"name": "asr", "status": "done", "progress": 100}, ...]
+    result = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
 # ==================== Pydantic 模型 (ASR 分P) ====================
 
 class ASRCreateRequest(BaseModel):
@@ -250,6 +274,7 @@ class ASRUpdateRequest(BaseModel):
     """POST /asr/update 请求"""
     bvid: str
     cid: int
+    page_index: int
     content: str
 
 
@@ -257,6 +282,7 @@ class ASRReASRRequest(BaseModel):
     """POST /asr/reasr 请求"""
     bvid: str
     cid: int
+    page_index: int
 
 
 class ASRContentResponse(BaseModel):
@@ -287,3 +313,47 @@ class VideoPageVersionInfo(BaseModel):
     content_preview: str
     is_latest: bool
     created_at: datetime
+
+
+# ==================== Pydantic 模型 (分P向量化) ====================
+
+class VectorPageStatusResponse(BaseModel):
+    """GET /vec/page/status 响应"""
+    exists: bool
+    bvid: Optional[str] = None
+    cid: Optional[int] = None
+    page_index: Optional[int] = None
+    page_title: Optional[str] = None
+    is_processed: bool
+    content_preview: Optional[str] = None
+    is_vectorized: str  # pending / processing / done / failed
+    vectorized_at: Optional[datetime] = None
+    vector_chunk_count: int = 0
+    vector_error: Optional[str] = None
+    chroma_exists: bool
+    steps: Optional[list[dict]] = None  # 子步骤透传
+
+
+class VectorPageTaskStatus(BaseModel):
+    """GET /vec/page/status/{task_id} 响应"""
+    task_id: str
+    status: str  # pending / processing / done / failed
+    progress: int
+    message: str
+    steps: Optional[list[dict]] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
+
+
+class VectorPageCreateRequest(BaseModel):
+    """POST /vec/page/create 请求"""
+    bvid: str
+    cid: int
+    page_index: int = 0
+    page_title: Optional[str] = None
+
+
+class VectorPageReVectorRequest(BaseModel):
+    """POST /vec/page/revector 请求"""
+    bvid: str
+    cid: int
