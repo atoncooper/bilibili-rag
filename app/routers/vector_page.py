@@ -125,27 +125,25 @@ async def create_vec(
     page = result.scalar_one_or_none()
 
     if not page:
-        raise HTTPException(status_code=404, detail="VideoPage not found, need ASR first")
+        page = VideoPage(
+            bvid=req.bvid,
+            cid=req.cid,
+            page_index=req.page_index,
+            page_title=req.page_title or f"P{req.page_index + 1}",
+            is_processed=False,
+            version=1,
+            is_vectorized="pending",
+            vector_chunk_count=0,
+        )
+        db.add(page)
+        await db.commit()
+        await db.refresh(page)
 
     # 2. 幂等检查
     if page.is_vectorized == "done" and page.content:
         # 检查 content 是否变化（future: hash 比对）
         # 目前简单跳过
         return {"task_id": None, "message": "已是最新向量"}
-
-    if not page.is_processed or not page.content:
-        # ASR 未完成，先触发 ASR（返回 task_id 让前端轮询）
-        asr_task_id = str(uuid.uuid4())
-        from app.routers.asr import asr_tasks
-        asr_tasks[asr_task_id] = {
-            "status": "pending",
-            "progress": 0,
-            "message": "ASR 任务已创建"
-        }
-        asyncio.create_task(
-            _trigger_asr_then_vec(asr_task_id, req.bvid, req.cid, req.page_index, req.page_title or page.page_title or f"P{req.page_index + 1}")
-        )
-        return {"task_id": asr_task_id, "message": "ASR 中，ASR 完成后自动向量化"}
 
     # 3. 创建 async_tasks → 后台执行
     task_id = _build_task_id()
