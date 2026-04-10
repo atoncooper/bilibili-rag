@@ -6,7 +6,7 @@ import DemoFlowModal from "@/components/DemoFlowModal";
 import SourcesPanel from "@/components/SourcesPanel";
 import ChatPanel from "@/components/ChatPanel";
 import ASRViewerModal from "@/components/ASRViewerModal";
-import { UserInfo, authApi } from "@/lib/api";
+import { UserInfo, authApi, VectorPageStatusResponse } from "@/lib/api";
 
 export default function Home() {
   const [session, setSession] = useState<string | null>(null);
@@ -15,14 +15,21 @@ export default function Home() {
   const [showDemo, setShowDemo] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
+  const [externalVectorUpdate, setExternalVectorUpdate] = useState<{
+    bvid: string;
+    cid: number;
+    status: VectorPageStatusResponse;
+    version: number;
+  } | null>(null);
 
   // ASR 弹窗状态
   const [asrModal, setAsrModal] = useState<{
     isOpen: boolean;
     bvid: string;
     cid: number;
+    pageIndex: number;
     pageTitle: string;
-  }>({ isOpen: false, bvid: "", cid: 0, pageTitle: "" });
+  }>({ isOpen: false, bvid: "", cid: 0, pageIndex: 0, pageTitle: "" });
 
   // 拖拽调整宽度
   const [leftWidth, setLeftWidth] = useState(320);
@@ -89,12 +96,21 @@ export default function Home() {
     localStorage.removeItem("bili_user");
   };
 
-  const onOpenASR = (bvid: string, cid: number, pageTitle: string) => {
-    setAsrModal({ isOpen: true, bvid, cid, pageTitle });
+  const onOpenASR = (bvid: string, cid: number, pageTitle: string, pageIndex: number = 0) => {
+    setAsrModal({ isOpen: true, bvid, cid, pageIndex, pageTitle });
   };
 
   const onCloseASR = () => {
     setAsrModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleVectorizationDone = (bvid: string, cid: number, status: VectorPageStatusResponse) => {
+    setExternalVectorUpdate({
+      bvid,
+      cid,
+      status,
+      version: Date.now(),
+    });
   };
 
   return (
@@ -181,6 +197,7 @@ export default function Home() {
                 onBuildDone={() => setStatsKey((v) => v + 1)}
                 onSelectionChange={setSelectedFolderIds}
                 onOpenASR={onOpenASR}
+                externalVectorUpdate={externalVectorUpdate}
               />
             </aside>
 
@@ -214,7 +231,9 @@ export default function Home() {
           onClose={onCloseASR}
           bvid={asrModal.bvid}
           cid={asrModal.cid}
+          pageIndex={asrModal.pageIndex}
           pageTitle={asrModal.pageTitle}
+          onVectorizationDone={handleVectorizationDone}
         />
       )}
     </div>
