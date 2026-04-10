@@ -77,6 +77,8 @@ class ASRPageService:
             if not audio_url:
                 raise Exception(f"无法获取音频 URL: bvid={bvid}, cid={cid}")
 
+            asr_tasks[task_id]["progress"] = 25
+            asr_tasks[task_id]["message"] = "Downloading audio..."
             # 下载到本地（避免 URL 过期导致 403）
             tmp_dir = os.path.join("data", "asr_tmp")
             os.makedirs(tmp_dir, exist_ok=True)
@@ -90,16 +92,16 @@ class ASRPageService:
             if file_size < 1024:
                 raise Exception(f"音频文件过小({file_size} bytes): bvid={bvid}, cid={cid}")
 
-            asr_tasks[task_id]["progress"] = 40
-            asr_tasks[task_id]["message"] = "ASR 转写中..."
+            asr_tasks[task_id]["progress"] = 55
+            asr_tasks[task_id]["message"] = "Running ASR..."
 
             # ASR 转写（本地文件上传，避免 URL 过期 403）
             text = await self.asr.transcribe_local_file(tmp_file)
             if not text or len(text) < 50:
                 raise Exception(f"ASR 内容过少: {len(text) if text else 0} 字符")
 
-            asr_tasks[task_id]["progress"] = 70
-            asr_tasks[task_id]["message"] = "写入数据库..."
+            asr_tasks[task_id]["progress"] = 85
+            asr_tasks[task_id]["message"] = "Writing database..."
 
             # 写入数据库
             async with get_db_context() as db:
