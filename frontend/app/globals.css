@@ -536,6 +536,7 @@ body {
   gap: 8px;
   font-size: 12px;
   color: var(--muted);
+  min-width: 0;
 }
 
 .video-item .truncate {
@@ -544,6 +545,107 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 工作区页面列表项（分P行内） */
+.page-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.page-item .page-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(47, 124, 120, 0.12);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(47, 124, 120, 0.25);
+  white-space: nowrap;
+}
+
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workspace-empty {
+  text-align: center;
+  padding: 16px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workspace-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.workspace-item .workspace-item-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.workspace-item .workspace-item-meta {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.workspace-item .remove-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(199, 68, 58, 0.1);
+  color: var(--danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.workspace-item .remove-btn:hover {
+  background: rgba(199, 68, 58, 0.2);
+  transform: scale(1.1);
 }
 
 .progress {
