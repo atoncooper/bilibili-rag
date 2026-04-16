@@ -159,11 +159,20 @@ class FavoriteFolderInfo(BaseModel):
     is_default: Optional[bool] = None
 
 
+class WorkspacePage(BaseModel):
+    """工作区页面（用户选中的已向量化分P）"""
+    bvid: str
+    cid: int
+    page_index: int = 0
+    page_title: Optional[str] = None
+
+
 class ChatRequest(BaseModel):
     """对话请求"""
     question: str
     session_id: Optional[str] = None
     folder_ids: Optional[list[int]] = None  # 指定收藏夹，None 表示全部
+    workspace_pages: Optional[list[WorkspacePage]] = None  # 工作区选中的分P
 
 
 class ChatResponse(BaseModel):
