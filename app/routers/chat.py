@@ -16,7 +16,7 @@ from openai import OpenAI
 from langchain.schema import Document
 
 from app.database import get_db
-from app.models import ChatRequest, ChatResponse, FavoriteFolder, FavoriteVideo, VideoCache
+from app.models import ChatRequest, ChatResponse, FavoriteFolder, FavoriteVideo, VideoCache, WorkspacePage
 from app.config import settings
 from app.routers.knowledge import get_rag_service
 from app.services.query import RewriteResult, RewriteType, CONFIDENCE_THRESHOLD
@@ -257,11 +257,22 @@ def _merge_and_deduplicate(*doc_lists, per_video_k: int = 2) -> List[Document]:
     """
     # 按 bvid 分组（Document 对象使用 .metadata.get()）
     grouped = defaultdict(list)
-    for docs in doc_lists:
-        for doc in docs:
-            bvid = doc.metadata.get("bvid") if hasattr(doc, "metadata") else doc.get("bvid")
-            if bvid:
-                grouped[bvid].append(doc)
+    for i, docs in enumerate(doc_lists):
+        for j, doc in enumerate(docs):
+            try:
+                bvid = doc.metadata.get("bvid") if hasattr(doc, "metadata") else doc.get("bvid")
+            except Exception as e:
+                logger.warning(f"[MERGE_DEBUG] doc[{i}][{j}] metadata.get 异常: type(doc)={type(doc)}, err={e}")
+                continue
+            try:
+                if not isinstance(bvid, str):
+                    logger.warning(f"[MERGE_DEBUG] doc[{i}][{j}] bvid 类型异常: type={type(bvid)}, value={repr(bvid)[:100]}")
+                    continue
+                if bvid:
+                    grouped[bvid].append(doc)
+            except TypeError as te:
+                logger.warning(f"[MERGE_DEBUG] grouped[bvid] 异常: bvid={repr(bvid)[:50]}, err={te}")
+                raise
 
     # 每组内按 score 降序取 top-K
     final_docs = []
@@ -279,18 +290,33 @@ async def _vector_search_with_rewrites(
     rewrite_result: RewriteResult,
     bvids: Optional[List[str]],
     k: int = 5,
+    workspace_pages: Optional[List[dict]] = None,
 ) -> tuple[str, List[dict]]:
     """
     根据改写结果选择检索 query。
     策略优先级：step_back > sub_queries。
     只有命中策略且置信度 >= CONFIDENCE_THRESHOLD 时才使用改写检索。
+
+    Args:
+        question: 原始问题
+        rewrite_result: 查询改写结果
+        bvids: 视频 BV 列表
+        k: 召回数量
+        workspace_pages: 工作区选中的分P列表，用于精确过滤
     """
     rag = get_rag_service()
     rewrites = rewrite_result.rewrites
 
+    # 诊断日志：检查 workspace_pages 中是否有异常的 list 类型值
+    if workspace_pages:
+        for wp in workspace_pages:
+            for k_field, v in wp.items():
+                if isinstance(v, list):
+                    logger.warning(f"[WORKSPACE_DEBUG] workspace_pages 中发现 list 类型: {k_field}={v}")
+
     if not rewrites:
         # 无改写结果，降级为直接检索
-        docs = rag.search(question, k=k, bvids=bvids if bvids else None)
+        docs = rag.search(question, k=k, bvids=bvids if bvids else None, workspace_pages=workspace_pages)
         return _build_context_from_docs(docs)
 
     rewrite = rewrites[0]  # 只有第一个（最高置信度）策略会被使用
@@ -311,8 +337,8 @@ async def _vector_search_with_rewrites(
 
         # 并发执行，不在关键路径上增加延迟
         general_docs, specific_docs = await asyncio.gather(
-            rag.search(step_back_query, k=k, bvids=bvids if bvids else None),
-            rag.search(specific_query, k=k, bvids=bvids if bvids else None),
+            rag.search(step_back_query, k=k, bvids=bvids if bvids else None, workspace_pages=workspace_pages),
+            rag.search(specific_query, k=k, bvids=bvids if bvids else None, workspace_pages=workspace_pages),
         )
         logger.info(
             f"[QUERY_REWRITE] 泛化召回: {len(general_docs)} docs, "
@@ -337,7 +363,7 @@ async def _vector_search_with_rewrites(
 
         # 并发执行所有子 query 检索
         results = await asyncio.gather(*[
-            rag.search(q, k=k, bvids=bvids if bvids else None) for q in sub_queries
+            rag.search(q, k=k, bvids=bvids if bvids else None, workspace_pages=workspace_pages) for q in sub_queries
         ])
         for i, (q, r) in enumerate(zip(sub_queries, results)):
             logger.info(f"[QUERY_REWRITE] 子查询[{i+1}] '{q}' 召回: {len(r)} docs")
@@ -350,7 +376,7 @@ async def _vector_search_with_rewrites(
         f"[QUERY_REWRITE] 未命中任何改写策略，使用原始 question 直接检索\n"
         f"  rewrite.type={rewrite.type}, confidence={rewrite.confidence}"
     )
-    docs = rag.search(question, k=k, bvids=bvids if bvids else None)
+    docs = rag.search(question, k=k, bvids=bvids if bvids else None, workspace_pages=workspace_pages)
     return _build_context_from_docs(docs)
 
 
@@ -358,12 +384,17 @@ def _build_context_from_docs(docs: List[Document]) -> tuple[str, List[dict]]:
     """从文档列表构建 context 和 sources"""
     context_parts, sources, seen_bvids = [], [], set()
     for doc in docs:
-        bvid = doc.metadata.get("bvid", "")
-        title = doc.metadata.get("title", "")
-        content = doc.page_content.strip()
+        try:
+            bvid = doc.metadata.get("bvid", "") if hasattr(doc, "metadata") else (doc.get("bvid", "") if hasattr(doc, "get") else "")
+            title = doc.metadata.get("title", "") if hasattr(doc, "metadata") else (doc.get("title", "") if hasattr(doc, "get") else "")
+            content = doc.page_content.strip() if hasattr(doc, "page_content") else str(doc).strip()
+        except Exception as e:
+            logger.warning(f"[BUILD_CTX_DEBUG] doc 处理异常: type(doc)={type(doc)}, err={e}")
+            continue
         if content:
             context_parts.append(f"【{title}】\n{content}")
-        if bvid and bvid not in seen_bvids:
+        # 防御：bvid 可能是 list 或其他非 hashable 类型
+        if bvid and isinstance(bvid, str) and bvid not in seen_bvids:
             seen_bvids.add(bvid)
             sources.append({"bvid": bvid, "title": title, "url": f"https://www.bilibili.com/video/{bvid}"})
     return "\n\n---\n\n".join(context_parts), sources
@@ -522,6 +553,13 @@ async def _prepare_messages(request: ChatRequest, db: AsyncSession, rewrite_resu
     is_general = _is_general_question(question)
     if request.folder_ids:
         is_collection_intent = True
+
+    # 工作区模式：有 workspace_pages 时强制走 vector 检索
+    workspace_mode = request.workspace_pages is not None and len(request.workspace_pages) > 0
+    workspace_pages_dicts = [wp.model_dump() for wp in request.workspace_pages] if workspace_mode else None
+    if workspace_mode:
+        logger.info(f"[WORKSPACE] 工作区模式: {len(workspace_pages_dicts)} 个分P")
+
     # 1) LLM 路由优先，失败时降级规则路由
     logger.info(f"路由输入: question={question} folder_ids={folder_ids} has_data={has_data} is_collection_intent={is_collection_intent}")
     route, route_raw = _route_with_llm(question)
@@ -535,6 +573,10 @@ async def _prepare_messages(request: ChatRequest, db: AsyncSession, rewrite_resu
     # 纠偏
     if is_general:
         route = "direct"
+    # 工作区模式强制走 vector
+    if workspace_mode:
+        route = "vector"
+        logger.info("[WORKSPACE] 强制路由: vector")
     # 2) 无数据时处理
     if not has_data:
         if is_collection_intent:
@@ -574,12 +616,12 @@ async def _prepare_messages(request: ChatRequest, db: AsyncSession, rewrite_resu
     if related is None:
         rewrite_query = rewrite_result.rewrites[0].query if (rewrite_result and rewrite_result.rewrites) else question
         related = await _is_related_to_collection(db, folder_ids, rewrite_query)
-    if not related and not is_collection_intent:
+    if not related and not is_collection_intent and not workspace_mode:
         return _build_direct_messages(question), [], question, rewrite_result
-    # 7) 向量检索（使用 Query 改写）
+    # 7) 向量检索（使用 Query 改写 + 工作区过滤）
     try:
         context, sources = await _vector_search_with_rewrites(
-            question, rewrite_result, bvids, k=5
+            question, rewrite_result, bvids, k=5, workspace_pages=workspace_pages_dicts
         )
         if context:
             return _build_rag_messages(context, question), sources, question, rewrite_result
