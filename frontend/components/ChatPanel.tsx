@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { chatApi, knowledgeApi, KnowledgeStats, API_BASE_URL } from "@/lib/api";
+import { chatApi, knowledgeApi, KnowledgeStats, API_BASE_URL, WorkspacePage } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -16,9 +16,10 @@ interface Props {
   statsKey?: number;
   sessionId?: string;
   folderIds?: number[];
+  workspacePages?: WorkspacePage[];
 }
 
-export default function ChatPanel({ statsKey, sessionId, folderIds }: Props) {
+export default function ChatPanel({ statsKey, sessionId, folderIds, workspacePages }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,6 +58,7 @@ export default function ChatPanel({ statsKey, sessionId, folderIds }: Props) {
           question: q,
           session_id: sessionId,
           folder_ids: folderIds,
+          workspace_pages: workspacePages,
         }),
       });
 
@@ -114,7 +116,7 @@ export default function ChatPanel({ statsKey, sessionId, folderIds }: Props) {
       }
     } catch (e) {
       try {
-        const res = await chatApi.ask(q, sessionId, folderIds);
+        const res = await chatApi.ask({ question: q, session_id: sessionId, folder_ids: folderIds, workspace_pages: workspacePages });
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId ? { ...m, content: res.answer, sources: res.sources } : m
