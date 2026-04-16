@@ -6,7 +6,7 @@ import DemoFlowModal from "@/components/DemoFlowModal";
 import SourcesPanel from "@/components/SourcesPanel";
 import ChatPanel from "@/components/ChatPanel";
 import ASRViewerModal from "@/components/ASRViewerModal";
-import { UserInfo, authApi, VectorPageStatusResponse } from "@/lib/api";
+import { UserInfo, authApi, VectorPageStatusResponse, WorkspacePage } from "@/lib/api";
 
 export default function Home() {
   const [session, setSession] = useState<string | null>(null);
@@ -15,6 +15,7 @@ export default function Home() {
   const [showDemo, setShowDemo] = useState(false);
   const [statsKey, setStatsKey] = useState(0);
   const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
+  const [workspacePages, setWorkspacePages] = useState<WorkspacePage[]>([]);
   const [externalVectorUpdate, setExternalVectorUpdate] = useState<{
     bvid: string;
     cid: number;
@@ -198,6 +199,8 @@ export default function Home() {
                 onSelectionChange={setSelectedFolderIds}
                 onOpenASR={onOpenASR}
                 externalVectorUpdate={externalVectorUpdate}
+                workspacePages={workspacePages}
+                onWorkspacePagesChange={setWorkspacePages}
               />
             </aside>
 
@@ -213,6 +216,7 @@ export default function Home() {
                 statsKey={statsKey}
                 sessionId={session ?? undefined}
                 folderIds={selectedFolderIds}
+                workspacePages={workspacePages}
               />
             </section>
           </section>
