@@ -12,8 +12,10 @@ import {
   BuildStatus,
   FolderStatus,
   OrganizePreviewResponse,
+  WorkspacePage,
 } from "@/lib/api";
 import OrganizePreviewModal from "@/components/OrganizePreviewModal";
+import WorkspacePanel from "@/components/WorkspacePanel";
 
 interface Props {
   sessionId: string;
@@ -26,6 +28,8 @@ interface Props {
     status: VectorPageStatusResponse;
     version: number;
   } | null;
+  workspacePages?: WorkspacePage[];
+  onWorkspacePagesChange?: (pages: WorkspacePage[]) => void;
 }
 
 export default function SourcesPanel({
@@ -34,6 +38,8 @@ export default function SourcesPanel({
   onSelectionChange,
   onOpenASR,
   externalVectorUpdate,
+  workspacePages = [],
+  onWorkspacePagesChange,
 }: Props) {
   const [folders, setFolders] = useState<(FavoriteFolder & { videos?: Video[]; expanded?: boolean; loading?: boolean; count_source?: "bili" | "filtered" | "db" })[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -435,6 +441,20 @@ export default function SourcesPanel({
     }
   };
 
+  // 工作区：切换分P选中状态
+  const toggleWorkspacePage = (bvid: string, cid: number, pageTitle: string, pageIndex: number) => {
+    const key = `${bvid}-${cid}`;
+    const exists = workspacePages.some((p) => `${p.bvid}-${p.cid}` === key);
+    if (exists) {
+      onWorkspacePagesChange?.(workspacePages.filter((p) => `${p.bvid}-${p.cid}` !== key));
+    } else {
+      onWorkspacePagesChange?.([...workspacePages, { bvid, cid, page_index: pageIndex, page_title: pageTitle }]);
+    }
+  };
+
+  const isInWorkspace = (bvid: string, cid: number) =>
+    workspacePages.some((p) => p.bvid === bvid && p.cid === cid);
+
   const getButtonText = () => {
     if (building) return progress?.current_step || "处理中...";
     if (selected.size === 0) return "选择收藏夹";
@@ -460,6 +480,17 @@ export default function SourcesPanel({
           <div className="panel-subtitle">{folders.length} 个</div>
         </div>
         <div className="panel-actions">
+          {workspacePages.length > 0 && (
+            <span className="workspace-badge">
+              {workspacePages.length} 个分P已选中
+              <button
+                onClick={() => onWorkspacePagesChange?.([])}
+                className="ml-1 text-xs hover:underline"
+              >
+                清空
+              </button>
+            </span>
+          )}
           <button
             onClick={() => {
               const def = folders.find((f) => f.is_default || f.title === "默认收藏夹");
@@ -482,6 +513,25 @@ export default function SourcesPanel({
 
       <div className="panel-body">
         <div className="sources-scroll">
+          {/* 工作区管理面板 */}
+          {workspacePages.length > 0 && (
+            <div className="mb-3 pb-3 border-b border-dashed border-[var(--border)]">
+              <div className="text-xs font-semibold text-[var(--muted)] mb-2 uppercase tracking-wider">
+                工作区 ({workspacePages.length})
+              </div>
+              <WorkspacePanel
+                workspacePages={workspacePages}
+                onRemove={(bvid, cid) => {
+                  const key = `${bvid}-${cid}`;
+                  onWorkspacePagesChange?.(
+                    workspacePages.filter((p) => `${p.bvid}-${p.cid}` !== key)
+                  );
+                }}
+                onClear={() => onWorkspacePagesChange?.([])}
+                onOpenVideo={(bvid) => window.open(`https://www.bilibili.com/video/${bvid}`)}
+              />
+            </div>
+          )}
           {loading ? (
             <div className="text-center text-sm text-[var(--muted)] py-6">加载中...</div>
           ) : folders.length === 0 ? (
@@ -554,6 +604,16 @@ export default function SourcesPanel({
                                           <span className="text-[var(--accent)]">▶</span>
                                           <span>P{p.page}:</span>
                                           <span className="truncate flex-1">{p.title}</span>
+
+                                          {/* 工作区勾选 */}
+                                          <input
+                                            type="checkbox"
+                                            checked={isInWorkspace(v.bvid, p.cid)}
+                                            onChange={() => toggleWorkspacePage(v.bvid, p.cid, `P${p.page}: ${p.title}`, p.page - 1)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-3 h-3 accent-[var(--accent)]"
+                                            title="加入工作区"
+                                          />
 
                                           {/* 向量化状态 icon */}
                                           <VecStatusIcon status={vecStatus?.is_vectorized || "pending"} />
