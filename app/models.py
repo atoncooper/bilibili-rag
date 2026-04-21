@@ -181,6 +181,28 @@ class ChatResponse(BaseModel):
     sources: list[dict]  # 来源视频列表
 
 
+class ReasoningStepResponse(BaseModel):
+    """Agentic RAG 推理步骤"""
+    step: int
+    action: str
+    query: str = ""
+    reasoning: str = ""
+    verdict: Optional[str] = None
+    recall_score: Optional[float] = None
+    sources: list[dict] = []
+    content_preview: str = ""
+
+
+class AgenticChatResponse(BaseModel):
+    """Agentic RAG 对话响应"""
+    answer: str
+    sources: list[dict]
+    reasoning_steps: list[ReasoningStepResponse]
+    synthesis_method: str
+    hops_used: int
+    avg_recall_score: float = 0.0
+
+
 class VideoPageInfo(BaseModel):
     """单个分P信息"""
     cid: int
