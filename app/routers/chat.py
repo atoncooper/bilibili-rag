@@ -13,13 +13,22 @@ from loguru import logger
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from openai import OpenAI
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from app.database import get_db
-from app.models import ChatRequest, ChatResponse, FavoriteFolder, FavoriteVideo, VideoCache, WorkspacePage
+from app.models import (
+    AgenticChatResponse,
+    ChatRequest,
+    ChatResponse,
+    FavoriteFolder,
+    FavoriteVideo,
+    VideoCache,
+    WorkspacePage,
+)
 from app.config import settings
 from app.routers.knowledge import get_rag_service
 from app.services.query import RewriteResult, RewriteType, CONFIDENCE_THRESHOLD
+from app.services.rag import get_agentic_rag_service
 
 router = APIRouter(prefix="/chat", tags=["对话"])
 
@@ -652,6 +661,43 @@ async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSes
     except Exception as e:
         logger.error(f"问答失败: {e}")
         raise HTTPException(status_code=500, detail=f"问答失败: {str(e)}")
+
+
+@router.post("/ask/agentic", response_model=AgenticChatResponse)
+async def ask_question_agentic(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
+    """Agentic RAG 问答"""
+    if not request.question or not request.question.strip():
+        raise HTTPException(status_code=400, detail="问题不能为空")
+
+    try:
+        folder_ids = []
+        if request.session_id:
+            folder_ids = await _get_folder_ids_for_session(db, request.session_id, request.folder_ids)
+        bvids = await _get_bvids_by_folder_ids(db, folder_ids) if folder_ids else []
+        workspace_pages = [wp.model_dump() for wp in request.workspace_pages] if request.workspace_pages else None
+
+        service = get_agentic_rag_service(
+            rag_service=get_rag_service(),
+            rewriter=http_request.app.state.rewriter,
+        )
+        result = await service.answer(
+            question=request.question.strip(),
+            bvids=bvids,
+            workspace_pages=workspace_pages,
+        )
+        return AgenticChatResponse(
+            answer=result.answer,
+            sources=result.sources,
+            reasoning_steps=[step.model_dump() for step in result.reasoning_steps],
+            synthesis_method=result.synthesis_method,
+            hops_used=result.hops_used,
+            avg_recall_score=result.avg_recall_score,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Agentic RAG 问答失败: {e}")
+        raise HTTPException(status_code=500, detail=f"Agentic RAG 问答失败: {str(e)}")
 
 @router.post("/ask/stream")
 async def ask_question_stream(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
