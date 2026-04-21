@@ -20,6 +20,19 @@ class Settings(BaseSettings):
     openai_base_url: str = Field(default="https://api.openai.com/v1", env="OPENAI_BASE_URL")
     llm_model: str = Field(default="gpt-4-turbo", env="LLM_MODEL")
     embedding_model: str = Field(default="text-embedding-3-small", env="EMBEDDING_MODEL")
+    eval_llm_model: str = Field(default="gpt-4o-mini", env="EVAL_LLM_MODEL")
+
+    # Agentic RAG
+    agentic_rag_top_k: int = Field(default=5, env="AGENTIC_RAG_TOP_K")
+    agentic_rag_max_hops: int = Field(default=3, env="AGENTIC_RAG_MAX_HOPS")
+
+    # LangSmith (用于 LangChain / LangGraph 自动追踪，无需代码改动)
+    # 设置 LANGCHAIN_TRACING_V2=true 或 LANGSMITH_TRACING=true 并填入 API key 即可启用
+    langchain_tracing_v2: bool = Field(default=False, env="LANGCHAIN_TRACING_V2")
+    langsmith_tracing: bool = Field(default=False, env="LANGSMITH_TRACING")
+    langsmith_api_key: str = Field(default="", env="LANGSMITH_API_KEY")
+    langsmith_project: str = Field(default="bilibili-rag", env="LANGSMITH_PROJECT")
+    langsmith_endpoint: str = Field(default="https://api.smith.langchain.com", env="LANGSMITH_ENDPOINT")
 
     # DashScope ASR
     dashscope_base_url: str = Field(
