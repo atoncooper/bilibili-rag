@@ -4,11 +4,15 @@ Query Rewriter - Step-Back Prompting Strategy
 后退提示词策略：将具体问题泛化为更高层次的概念，
 先召回泛化结果，再与原始 query 结果合并。
 """
-import json
 from typing import Optional
 
 from app.services.query.strategy import RewriteStrategy
-from app.services.query.types import RewrittenQuery, RewriteType, StepBackMetadata
+from app.services.query.types import (
+    RewrittenQuery,
+    RewriteType,
+    StepBackMetadata,
+    StepBackStructuredOutput,
+)
 
 
 class StepBackStrategy(RewriteStrategy):
@@ -82,45 +86,49 @@ class StepBackStrategy(RewriteStrategy):
   - ❌ 错误泛化："编程规则"（丢失了 Rust）
 
 ### 2. 具体完善
-补充被省略的主语/宾语，使问题更完整具体：
-- 输入："所有权规则详解" → "Rust 所有权规则详解"
-- 输入："性能怎么调优" → "小程序性能调优方法"
+补充被省略的主语/宾语，使问题更完整具体。但请注意：
+- ✅ 只能补充问题中**隐含**的实体（如从上下文可推断）
+- ❌ 禁止引入原问题中**完全不存在**的新实体或新主题
+- ❌ 禁止改变原问题的否定含义
 
-## 输出格式
+**正确示例**：
+- 输入："所有权规则详解" → "Rust 所有权规则详解"（Rust 是隐含的技术背景）
+- 输入："性能怎么调优" → "小程序性能调优方法"（小程序是隐含的产品背景）
 
-只输出 JSON，不要解释。
+**错误示例**：
+- 输入："如何学习编程" → "如何学习 Python 编程"（Python 不在原问题中！）
+- 输入："不是王德峰讲的" → "王德峰讲的中国哲学"（改变了否定含义！）
 
-问题：{query}
+### 3. 否定查询处理
+如果用户问题包含否定词（"不是"、"除了"、"不包含"、"没有"等）：
+- 具体完善时**必须保留否定含义**，禁止把否定改为肯定
+- 高层次抽象可以弱化否定，但不得反转语义
 
-输出格式：
-{{
-  "step_back_query": "保留核心实体和关键限定词的高层次抽象问题",
-  "specific_query": "补全主语/宾语后的完整具体问题",
-  "confidence": 0.0~1.0,
-  "reason": "一句话说明改写策略和保留的核心实体"
-}}"""
+**示例**：
+- 输入："除了王德峰，我还收藏了哪些讲中国哲学的视频？"
+  - ✅ 高层次抽象："讲中国哲学的视频有哪些"
+  - ✅ 具体完善："除了王德峰之外，讲中国哲学的视频有哪些"
+  - ❌ 错误："王德峰讲的中国哲学视频有哪些"（丢失了否定！）
+
+问题：{query}"""
 
         try:
-            response = self.llm.invoke(prompt)
-            text = response.content if hasattr(response, "content") else str(response)
-            # 尝试解析 JSON
-            data = json.loads(text)
+            structured_llm = self.llm.with_structured_output(StepBackStructuredOutput)
+            result: StepBackStructuredOutput = await structured_llm.ainvoke(prompt)
+
             # step_back_query 是必填字段
-            if not data.get("step_back_query"):
-                return None
-            # 只有 step_back_query 一个字段 → 部分 JSON，无效
-            if len(data) == 1:
+            if not result.step_back_query:
                 return None
             return RewrittenQuery(
                 type=RewriteType.STEP_BACK,
-                query=data.get("step_back_query", query),
-                confidence=float(data.get("confidence", 0.0)),
-                reason=data.get("reason", ""),
+                query=result.step_back_query,
+                confidence=result.confidence,
+                reason=result.reason,
                 metadata=StepBackMetadata(
-                    step_back_query=data.get("step_back_query", query),
-                    specific_query=data.get("specific_query", data.get("step_back_query", query)),
+                    step_back_query=result.step_back_query,
+                    specific_query=result.specific_query or result.step_back_query,
                 ),
             )
         except Exception as e:
-            # 解析失败时返回 None，由 QueryRewriter 降级为直接检索
+            # 结构化输出失败时返回 None，由 QueryRewriter 降级为直接检索
             return None
