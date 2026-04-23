@@ -60,7 +60,16 @@ class Settings(BaseSettings):
         default="./data/chroma_db",
         env="CHROMA_PERSIST_DIRECTORY"
     )
-    
+
+    # 分块策略配置（Phase 1: 增强规则分块）
+    chunk_target_size: int = Field(default=750, env="CHUNK_TARGET_SIZE")
+    chunk_min_size: int = Field(default=300, env="CHUNK_MIN_SIZE")
+    chunk_max_size: int = Field(default=900, env="CHUNK_MAX_SIZE")
+    chunk_overlap: int = Field(default=100, env="CHUNK_OVERLAP")
+
+    # Embedding 版本号（用于索引重建追踪）
+    embedding_version: str = Field(default="v1", env="EMBEDDING_VERSION")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
