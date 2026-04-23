@@ -69,11 +69,26 @@ class ContentFetcher:
                     content="无法获取视频信息",
                     source=ContentSource.BASIC_INFO
                 )
-        
+
         description = video_info.get("desc", "") if video_info else ""
-        
-        # Level 1: 跳过 AI 摘要，优先使用 ASR
-        logger.info(f"[{bvid}] 已跳过 AI 摘要，优先使用 ASR")
+
+        # 尝试获取视频提纲（outline），用于增强语义分块质量
+        outline = None
+        try:
+            up_mid = None
+            if video_info:
+                owner = video_info.get("owner") or {}
+                up_mid = owner.get("mid") or video_info.get("owner_mid")
+            ai_result = await self._try_ai_summary(bvid, cid, up_mid)
+            if ai_result:
+                outline = ai_result.get("outline")
+                if outline:
+                    logger.info(f"[{bvid}] 获取到 AI 提纲，共 {len(outline)} 段")
+        except Exception as e:
+            logger.debug(f"[{bvid}] 获取 AI 提纲失败: {e}")
+
+        # Level 1: 优先使用 ASR
+        logger.info(f"[{bvid}] 优先使用 ASR")
 
         asr_text = await self._try_asr(bvid, cid)
         if asr_text:
@@ -82,9 +97,10 @@ class ContentFetcher:
                 bvid=bvid,
                 title=title,
                 content=asr_text,
-                source=ContentSource.ASR
+                source=ContentSource.ASR,
+                outline=outline,
             )
-        
+
         # ASR 失败时，补齐基础信息（避免遗漏简介）
         if not video_info:
             try:
@@ -100,12 +116,13 @@ class ContentFetcher:
         basic_content = f"视频标题：{title}"
         if description:
             basic_content += f"\n\n视频简介：{description}"
-        
+
         return VideoContent(
             bvid=bvid,
             title=title,
             content=basic_content,
-            source=ContentSource.BASIC_INFO
+            source=ContentSource.BASIC_INFO,
+            outline=outline,
         )
 
     async def fetch_page_content(
