@@ -210,10 +210,57 @@ export interface WorkspacePage {
     page_title?: string;
 }
 
+// 聊天会话
+export interface ChatSession {
+    id: number;
+    chat_session_id: string;
+    session_id: string;
+    title?: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    last_message_at?: string;
+}
+
+// 聊天消息
+export interface ChatMessage {
+    id: number;
+    chat_session_id: string;
+    role: "user" | "assistant" | "system";
+    content: string;
+    status: "pending" | "completed" | "failed";
+    sources?: Array<{ bvid: string; title: string; url?: string }>;
+    tokens_used?: number;
+    model?: string;
+    latency_ms?: number;
+    error?: string;
+    created_at: string;
+}
+
+// 聊天历史响应
+export interface ChatHistoryResponse {
+    messages: ChatMessage[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_more: boolean;
+    next_cursor?: string | null;
+}
+
+// 会话列表响应
+export interface ChatSessionListResponse {
+    sessions: ChatSession[];
+}
+
+export interface ChatSessionUpdatePayload {
+    title: string;
+}
+
 // 对话请求载荷（统一构造方式）
 export interface ChatRequestPayload {
     question: string;
     session_id?: string;
+    chat_session_id?: string;  // 新增：聊天会话 ID
     folder_ids?: number[];
     workspace_pages?: WorkspacePage[];
 }
@@ -361,6 +408,48 @@ export const chatApi = {
             `/chat/search?query=${encodeURIComponent(query)}&k=${k}`,
             { method: "POST" }
         ),
+
+    // === 新增：流式接口（替代裸调 fetch）===
+    askStream: (payload: ChatRequestPayload): Promise<ReadableStream<Uint8Array>> => {
+        return fetch(`${API_BASE_URL}/chat/ask/stream`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        }).then((res) => {
+            if (!res.ok || !res.body) {
+                throw new Error("流式接口不可用");
+            }
+            return res.body;
+        });
+    },
+
+    // === 新增：会话管理 ===
+    createSession: (sessionId: string, title?: string) =>
+        request<ChatSession>("/chat/sessions", {
+            method: "POST",
+            body: JSON.stringify({ session_id: sessionId, title }),
+        }),
+
+    listSessions: (sessionId: string) =>
+        request<ChatSessionListResponse>(`/chat/sessions?session_id=${sessionId}`),
+
+    updateSession: (chatSessionId: string, payload: ChatSessionUpdatePayload) =>
+        request<ChatSession>(`/chat/sessions/${chatSessionId}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+        }),
+
+    deleteSession: (chatSessionId: string) =>
+        request(`/chat/sessions/${chatSessionId}`, { method: "DELETE" }),
+
+    // === 新增：历史消息 ===
+    getHistory: (chatSessionId: string, page = 1, pageSize = 50) =>
+        request<ChatHistoryResponse>(
+            `/chat/history?chat_session_id=${chatSessionId}&page=${page}&page_size=${pageSize}`
+        ),
+
+    clearHistory: (chatSessionId: string) =>
+        request(`/chat/history?chat_session_id=${chatSessionId}`, { method: "DELETE" }),
 };
 
 // ==================== 分P向量化相关 ====================
