@@ -42,14 +42,14 @@
   --chart-3: #b66b17;
   --chart-4: #7b7167;
   --chart-5: #c7443a;
-  --sidebar: #f7f1e8;
-  --sidebar-foreground: #1b1713;
-  --sidebar-primary: #d98b2b;
-  --sidebar-primary-foreground: #fff8f0;
-  --sidebar-accent: #efe6d7;
-  --sidebar-accent-foreground: #1b1713;
-  --sidebar-border: #dccbb4;
-  --sidebar-ring: #d98b2b;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1e293b;
+  --sidebar-border: #dbeafe;
+  --sidebar-ring: #3b82f6;
 }
 
 * {
@@ -327,7 +327,7 @@ a {
 
 .workspace {
   display: flex;
-  gap: 0;
+  gap: 16px;
   min-height: 0;
   /* 确保 workspace 填满 app-main 的高度，而不是用 calc 硬算 */
   flex: 1;
@@ -455,6 +455,250 @@ body {
 .panel-sources .panel-body {
   overflow: hidden;
 }
+
+/* ========== 侧边栏历史会话 ========== */
+.sidebar-shell {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  min-width: 260px;
+  max-width: 320px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(37, 99, 235, 0.08);
+  overflow: hidden;
+}
+
+.sidebar-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 16px 16px;
+}
+
+.sidebar-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-header-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #3b82f6;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sidebar-new-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sidebar-new-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.sidebar-new-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sidebar-list {
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+}
+
+.sidebar-list-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.sidebar-item:hover {
+  background: #f0f7ff;
+}
+
+.sidebar-item[aria-pressed="true"] {
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px #dbeafe;
+}
+
+.sidebar-item-active-bar {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: #2563eb;
+}
+
+.sidebar-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  color: #3b82f6;
+  transition: all 0.2s ease;
+}
+
+.sidebar-item[aria-pressed="true"] .sidebar-item-icon {
+  background: #2563eb;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.sidebar-item-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item[aria-pressed="true"] .sidebar-item-title {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.sidebar-item-time {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sidebar-item-actions {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-item:hover .sidebar-item-actions {
+  opacity: 1;
+}
+
+.sidebar-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidebar-action-btn:hover {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.sidebar-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  color: #60a5fa;
+}
+
+.sidebar-empty-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.sidebar-empty-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sidebar-skeleton-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+/* =================================== */
 
 .sources-scroll {
   display: flex;
@@ -1170,6 +1414,147 @@ body {
   }
 }
 
+/* ========== 侧边栏弹窗（参考收藏夹弹窗设计） ========== */
+.sidebar-dialog-overlay {
+  background: rgba(20, 16, 12, 0.4) !important;
+}
+
+/* DialogContent 只负责定位和动画，所有视觉样式交给 Card */
+.sidebar-dialog-content {
+  width: min(400px, 92vw) !important;
+  max-width: min(400px, 92vw) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  ring: none !important;
+  animation: fadeUp 0.3s ease !important;
+  gap: 0 !important;
+}
+
+/* ShadCN Card 作为弹窗唯一视觉卡片 */
+.sidebar-dialog-card {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 20px !important;
+  box-shadow: 0 22px 50px rgba(20, 16, 12, 0.25) !important;
+  color: inherit !important;
+  gap: 0 !important;
+  ring: none !important;
+}
+
+.sidebar-dialog-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 28px 20px !important;
+  background: transparent !important;
+}
+
+.sidebar-dialog-card-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  text-align: center !important;
+  line-height: 1.4 !important;
+}
+
+.sidebar-dialog-card-desc {
+  font-size: 14px !important;
+  color: #64748b !important;
+  text-align: center !important;
+  line-height: 1.6 !important;
+}
+
+.sidebar-dialog-card-content {
+  padding: 0 28px 20px !important;
+  background: transparent !important;
+}
+
+.sidebar-dialog-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidebar-dialog-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.sidebar-dialog-input::placeholder {
+  color: #94a3b8;
+}
+
+.sidebar-dialog-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 28px 28px !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.sidebar-dialog-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.sidebar-dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidebar-dialog-btn-cancel {
+  border-color: #dbeafe;
+  color: #3b82f6;
+}
+
+.sidebar-dialog-btn-cancel:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.sidebar-dialog-btn-confirm {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.sidebar-dialog-btn-confirm:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.sidebar-dialog-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.sidebar-dialog-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+/* ============================================ */
+
 @media (max-width: 1024px) {
   .hero {
     grid-template-columns: 1fr;
@@ -1445,4 +1830,264 @@ body {
 .page-action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ---------- 浮动面板样式 ---------- */
+.floating-panel {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(186, 230, 253, 0.6);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 45px rgba(56, 189, 248, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.floating-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px dashed rgba(186, 230, 253, 0.7);
+  background: rgba(224, 242, 254, 0.45);
+  user-select: none;
+}
+
+.floating-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0c4a6e;
+}
+
+.floating-panel-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(186, 230, 253, 0.7);
+  background: rgba(255, 255, 255, 0.7);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #7dd3fc;
+  transition: all 0.2s ease;
+}
+
+.floating-panel-close:hover {
+  border-color: #38bdf8;
+  color: #0284c7;
+  background: rgba(224, 242, 254, 0.6);
+}
+
+.floating-panel-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-panel-body .panel-inner {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+/* 浮动面板内覆盖为蓝调 accent */
+.floating-panel .folder-card::before {
+  background: #38bdf8;
+}
+
+.floating-panel .folder-card.selected {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(224, 242, 254, 0.45);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.1), 0 2px 8px rgba(56, 189, 248, 0.06);
+}
+
+.floating-panel .status-pill.ok {
+  background: rgba(224, 242, 254, 0.6);
+  color: #0369a1;
+}
+
+.floating-panel .status-pill.partial {
+  background: rgba(254, 249, 195, 0.6);
+  color: #a16207;
+}
+
+.floating-panel .status-pill.empty {
+  background: rgba(241, 245, 249, 0.6);
+  color: #64748b;
+}
+
+.floating-panel .progress-bar {
+  background: #38bdf8;
+}
+
+.floating-panel .page-action-btn {
+  border-color: rgba(186, 230, 253, 0.7);
+  color: #0284c7;
+}
+
+.floating-panel .page-action-btn:hover {
+  border-color: #38bdf8;
+  background: rgba(224, 242, 254, 0.4);
+}
+
+/* Resize handles */
+.resize-handle {
+  position: absolute;
+  z-index: 2;
+}
+
+.resize-handle-e {
+  right: 0;
+  top: 48px;
+  bottom: 16px;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.resize-handle-e:hover {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.resize-handle-s {
+  left: 0;
+  right: 16px;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.resize-handle-s:hover {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.resize-handle-se {
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 3px;
+  color: #7dd3fc;
+  transition: color 0.15s ease, background 0.15s ease;
+  background: transparent;
+  border-radius: 0 0 var(--radius-lg) 0;
+}
+
+.resize-handle-se:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+}
+
+/* ---------- Dock 图标栏 ---------- */
+.dock-bar {
+  position: fixed;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  z-index: 50;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dock-trigger-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  z-index: 49;
+  cursor: default;
+}
+
+.dock-backdrop {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dock-items {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.dock-icon {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+  padding: 0;
+  margin: 0;
+  appearance: none;
+}
+
+.dock-icon:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dock-icon.active {
+  background: rgba(224, 242, 254, 0.8);
+  color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+}
+
+.dock-indicator {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #38bdf8;
+}
+
+.dock-tooltip {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* Dock 面板动画包装器 */
+.dock-panel-wrapper {
+  will-change: transform, opacity;
 }
