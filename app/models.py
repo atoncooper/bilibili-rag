@@ -167,14 +167,6 @@ class WorkspacePage(BaseModel):
     page_title: Optional[str] = None
 
 
-class ChatRequest(BaseModel):
-    """对话请求"""
-    question: str
-    session_id: Optional[str] = None
-    folder_ids: Optional[list[int]] = None  # 指定收藏夹，None 表示全部
-    workspace_pages: Optional[list[WorkspacePage]] = None  # 工作区选中的分P
-
-
 class ChatResponse(BaseModel):
     """对话响应"""
     answer: str
@@ -291,6 +283,37 @@ class AsyncTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class ChatSession(Base):
+    """聊天会话表"""
+    __tablename__ = 'chat_sessions'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_session_id = Column(String(64), unique=True, index=True, nullable=False)
+    session_id = Column(String(64), index=True, nullable=False)  # 登录态 session
+    title = Column(String(200), nullable=True)
+    status = Column(String(20), default="active")  # active / archived / deleted
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_message_at = Column(DateTime, nullable=True)
+
+
+class ChatMessage(Base):
+    """聊天消息表"""
+    __tablename__ = 'chat_messages'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_session_id = Column(String(64), index=True, nullable=False)
+    role = Column(String(20), nullable=False)  # user / assistant / system
+    content = Column(Text, nullable=False, default="")
+    status = Column(String(20), default="completed")  # pending / completed / failed
+    sources = Column(JSON, nullable=True)  # 来源列表
+    tokens_used = Column(Integer, nullable=True)
+    model = Column(String(100), nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ==================== Pydantic 模型 (ASR 分P) ====================
 
 class ASRCreateRequest(BaseModel):
@@ -388,3 +411,80 @@ class VectorPageReVectorRequest(BaseModel):
     """POST /vec/page/revector 请求"""
     bvid: str
     cid: int
+
+
+# ==================== Pydantic 模型 (聊天历史) ====================
+
+class ChatSessionCreateRequest(BaseModel):
+    """创建聊天会话请求"""
+    session_id: str
+    title: Optional[str] = None
+
+
+class ChatSessionUpdateRequest(BaseModel):
+    """更新聊天会话请求"""
+    title: str
+
+
+class ChatSessionResponse(BaseModel):
+    """聊天会话响应"""
+    id: int
+    chat_session_id: str
+    session_id: str
+    title: Optional[str] = None
+    status: str = "active"
+    created_at: datetime
+    updated_at: datetime
+    last_message_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ChatMessageResponse(BaseModel):
+    """聊天消息响应"""
+    id: int
+    chat_session_id: str
+    role: str
+    content: str
+    status: str = "completed"
+    sources: Optional[list[dict]] = None
+    tokens_used: Optional[int] = None
+    model: Optional[str] = None
+    latency_ms: Optional[int] = None
+    error: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChatHistoryQueryParams(BaseModel):
+    """查询聊天历史参数"""
+    chat_session_id: str
+    page: int = 1
+    page_size: int = 50
+
+
+class ChatHistoryResponse(BaseModel):
+    """聊天历史分页响应"""
+    messages: list[ChatMessageResponse]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+
+
+class ChatSessionListResponse(BaseModel):
+    """会话列表响应"""
+    sessions: list[ChatSessionResponse]
+
+
+class ChatRequest(BaseModel):
+    """对话请求（更新版，增加 chat_session_id）"""
+    question: str
+    session_id: Optional[str] = None        # 登录态（鉴权）
+    chat_session_id: Optional[str] = None   # 聊天会话（新增）
+    folder_ids: Optional[list[int]] = None  # 指定收藏夹，None 表示全部
+    workspace_pages: Optional[list[WorkspacePage]] = None  # 工作区选中的分P
+    mode: str = "standard"  # standard / agentic
