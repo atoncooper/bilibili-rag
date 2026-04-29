@@ -5,6 +5,7 @@ Bilibili RAG 知识库系统
 import asyncio
 import json
 import re
+import time
 from collections import defaultdict
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -21,6 +22,12 @@ from app.models import (
     AgenticChatResponse,
     ChatRequest,
     ChatResponse,
+    ChatSessionCreateRequest,
+    ChatSessionUpdateRequest,
+    ChatSessionResponse,
+    ChatSessionListResponse,
+    ChatHistoryResponse,
+    ChatHistoryQueryParams,
     FavoriteFolder,
     FavoriteVideo,
     VideoCache,
@@ -28,6 +35,7 @@ from app.models import (
 )
 from app.config import settings
 from app.routers.knowledge import get_rag_service
+from app.services import chat_history as chat_history_service
 from app.services.query import RewriteResult, RewriteType, CONFIDENCE_THRESHOLD
 from app.services.rag import get_agentic_rag_service
 from app.services.rag.prompts import (
@@ -608,9 +616,30 @@ async def _prepare_messages(request: ChatRequest, db: AsyncSession, rewrite_resu
 
 @router.post("/ask", response_model=ChatResponse)
 async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
-    """智能问答"""
+    """智能问答（非流式，写入历史）"""
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
+
+    # 1. 获取或创建会话
+    chat_session = await chat_history_service.get_or_create_chat_session(
+        db,
+        session_id=request.session_id or "anonymous",
+        chat_session_id=request.chat_session_id,
+    )
+
+    # 2. 保存用户消息
+    await chat_history_service.save_user_message(
+        db, chat_session.chat_session_id, request.question.strip()
+    )
+
+    # 3. 创建 assistant 占位
+    assistant_msg = await chat_history_service.create_pending_assistant_message(
+        db, chat_session.chat_session_id, model=settings.llm_model
+    )
+
+    # 4. 更新会话时间
+    await chat_history_service.touch_chat_session(db, chat_session.chat_session_id)
+
     try:
         # === Query 改写 ===
         rewriter = http_request.app.state.rewriter
@@ -621,19 +650,60 @@ async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSes
 
         messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
         llm = _get_llm()
+        start_time = time.time()
         response = await llm.ainvoke(messages)
-        return ChatResponse(answer=response.content or "", sources=sources[:5])
-    except HTTPException: raise
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        answer = response.content or ""
+
+        # 5. 完成 assistant 消息
+        await chat_history_service.complete_assistant_message(
+            db,
+            message_id=assistant_msg.id,
+            content=answer,
+            sources=sources[:5],
+            latency_ms=latency_ms,
+        )
+
+        return ChatResponse(answer=answer, sources=sources[:5])
+    except HTTPException:
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error="HTTPException during ask"
+        )
+        raise
     except Exception as e:
         logger.error(f"问答失败: {e}")
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error=str(e)
+        )
         raise HTTPException(status_code=500, detail=f"问答失败: {str(e)}")
 
 
 @router.post("/ask/agentic", response_model=AgenticChatResponse)
 async def ask_question_agentic(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
-    """Agentic RAG 问答"""
+    """Agentic RAG 问答（写入历史）"""
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
+
+    # 1. 获取或创建会话
+    chat_session = await chat_history_service.get_or_create_chat_session(
+        db,
+        session_id=request.session_id or "anonymous",
+        chat_session_id=request.chat_session_id,
+    )
+
+    # 2. 保存用户消息
+    await chat_history_service.save_user_message(
+        db, chat_session.chat_session_id, request.question.strip()
+    )
+
+    # 3. 创建 assistant 占位
+    assistant_msg = await chat_history_service.create_pending_assistant_message(
+        db, chat_session.chat_session_id, model=settings.llm_model
+    )
+
+    # 4. 更新会话时间
+    await chat_history_service.touch_chat_session(db, chat_session.chat_session_id)
 
     try:
         folder_ids = []
@@ -646,11 +716,23 @@ async def ask_question_agentic(request: ChatRequest, http_request: Request, db: 
             rag_service=get_rag_service(),
             rewriter=http_request.app.state.rewriter,
         )
+        start_time = time.time()
         result = await service.answer(
             question=request.question.strip(),
             bvids=bvids,
             workspace_pages=workspace_pages,
         )
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # 5. 完成 assistant 消息
+        await chat_history_service.complete_assistant_message(
+            db,
+            message_id=assistant_msg.id,
+            content=result.answer,
+            sources=result.sources,
+            latency_ms=latency_ms,
+        )
+
         return AgenticChatResponse(
             answer=result.answer,
             sources=result.sources,
@@ -660,16 +742,44 @@ async def ask_question_agentic(request: ChatRequest, http_request: Request, db: 
             avg_recall_score=result.avg_recall_score,
         )
     except HTTPException:
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error="HTTPException during agentic"
+        )
         raise
     except Exception as e:
         logger.error(f"Agentic RAG 问答失败: {e}")
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error=str(e)
+        )
         raise HTTPException(status_code=500, detail=f"Agentic RAG 问答失败: {str(e)}")
 
 @router.post("/ask/stream")
 async def ask_question_stream(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
-    """流式问答"""
+    """流式问答（SSE，写入历史）"""
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
+
+    # 1. 获取或创建会话
+    chat_session = await chat_history_service.get_or_create_chat_session(
+        db,
+        session_id=request.session_id or "anonymous",
+        chat_session_id=request.chat_session_id,
+    )
+    chat_session_id = chat_session.chat_session_id
+
+    # 2. 保存用户消息
+    await chat_history_service.save_user_message(
+        db, chat_session_id, request.question.strip()
+    )
+
+    # 3. 创建 assistant 占位
+    assistant_msg = await chat_history_service.create_pending_assistant_message(
+        db, chat_session_id, model=settings.llm_model
+    )
+
+    # 4. 更新会话时间
+    await chat_history_service.touch_chat_session(db, chat_session_id)
+
     try:
         # === Query 改写 ===
         rewriter = http_request.app.state.rewriter
@@ -692,10 +802,14 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
             }
 
         async def generate():
-            """标准 SSE 流式生成器（data: 前缀 + event type）"""
+            """标准 SSE 流式生成器（data: 前缀 + event type），完成后写历史"""
+            full_content = ""
+            start_time = time.time()
             try:
                 async for chunk in llm.astream(messages):
-                    data = json.dumps({"type": "chunk", "content": chunk.content or ""}, ensure_ascii=False)
+                    chunk_text = chunk.content or ""
+                    full_content += chunk_text
+                    data = json.dumps({"type": "chunk", "content": chunk_text}, ensure_ascii=False)
                     yield f"data: {data}\n\n"
 
                 # 附加 sources 和 rewrite 信息
@@ -709,15 +823,37 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
                 # 结束标记
                 done_payload = json.dumps({"type": "done"}, ensure_ascii=False)
                 yield f"data: {done_payload}\n\n"
+
+                # 5. SSE 完成后更新 assistant 消息
+                latency_ms = int((time.time() - start_time) * 1000)
+                await chat_history_service.complete_assistant_message(
+                    db,
+                    message_id=assistant_msg.id,
+                    content=full_content,
+                    sources=sources,
+                    latency_ms=latency_ms,
+                )
             except Exception as e:
                 logger.error(f"流式生成失败: {e}")
-                error_payload = json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False)
+                error_msg = str(e)
+                error_payload = json.dumps({"type": "error", "message": error_msg}, ensure_ascii=False)
                 yield f"data: {error_payload}\n\n"
+                # 6. 失败后标记 assistant 消息
+                await chat_history_service.fail_assistant_message(
+                    db, assistant_msg.id, error=error_msg
+                )
 
         return StreamingResponse(generate(), media_type="text/event-stream")
-    except HTTPException: raise
+    except HTTPException:
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error="HTTPException during stream"
+        )
+        raise
     except Exception as e:
         logger.error(f"流式问答失败: {e}")
+        await chat_history_service.fail_assistant_message(
+            db, assistant_msg.id, error=str(e)
+        )
         raise HTTPException(status_code=500, detail=f"流式问答失败: {str(e)}")
 
 @router.post("/search")
@@ -743,3 +879,103 @@ async def search_videos(query: str, k: int = 5):
     except Exception as e:
         logger.error(f"搜索失败: {e}")
         raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+
+
+# ============================================================================
+# 聊天会话管理
+# ============================================================================
+
+@router.post("/sessions", response_model=ChatSessionResponse)
+async def create_session(
+    request: ChatSessionCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """创建新聊天会话"""
+    return await chat_history_service.create_chat_session(
+        db, session_id=request.session_id, title=request.title
+    )
+
+
+@router.get("/sessions", response_model=ChatSessionListResponse)
+async def list_sessions(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取当前用户的会话列表"""
+    sessions = await chat_history_service.list_chat_sessions(db, session_id)
+    return ChatSessionListResponse(sessions=sessions)
+
+
+@router.get("/sessions/{chat_session_id}", response_model=ChatSessionResponse)
+async def get_session(
+    chat_session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取单条会话"""
+    session = await chat_history_service.get_chat_session(db, chat_session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    return session
+
+
+@router.patch("/sessions/{chat_session_id}", response_model=ChatSessionResponse)
+async def update_session(
+    chat_session_id: str,
+    request: ChatSessionUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """更新会话标题"""
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="标题不能为空")
+
+    await chat_history_service.update_chat_session_title(db, chat_session_id, title)
+    session = await chat_history_service.get_chat_session(db, chat_session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    return session
+
+
+@router.delete("/sessions/{chat_session_id}")
+async def delete_session(
+    chat_session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """删除会话及其所有消息"""
+    await chat_history_service.delete_chat_session(db, chat_session_id)
+    return {"success": True}
+
+
+# ============================================================================
+# 聊天历史消息
+# ============================================================================
+
+@router.get("/history", response_model=ChatHistoryResponse)
+async def get_chat_history(
+    chat_session_id: str,
+    page: int = 1,
+    page_size: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    """分页查询聊天历史"""
+    messages, total = await chat_history_service.get_history(
+        db, chat_session_id, page=page, page_size=page_size
+    )
+    has_more = (page * page_size) < total
+    return ChatHistoryResponse(
+        messages=messages,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=has_more,
+    )
+
+
+@router.delete("/history")
+async def clear_chat_history(
+    chat_session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """清空某会话的所有消息"""
+    await chat_history_service.clear_history(db, chat_session_id)
+    return {"success": True}
