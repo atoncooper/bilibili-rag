@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # Embedding 版本号（用于索引重建追踪）
     embedding_version: str = Field(default="v1", env="EMBEDDING_VERSION")
 
+    # 用户 API Key 加密密钥（32 字节 base64，空则禁用用户自定义 Key 功能）
+    api_key_encryption_key: str = Field(default="", env="API_KEY_ENCRYPTION_KEY")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
