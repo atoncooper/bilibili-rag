@@ -488,3 +488,48 @@ class ChatRequest(BaseModel):
     folder_ids: Optional[list[int]] = None  # 指定收藏夹，None 表示全部
     workspace_pages: Optional[list[WorkspacePage]] = None  # 工作区选中的分P
     mode: str = "standard"  # standard / agentic
+
+
+# ==================== SQLAlchemy 模型 (用户 API Key) ====================
+
+class UserSettings(Base):
+    """用户自定义 API Key 配置表"""
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), nullable=False, unique=True, index=True)
+    # LLM 配置（Key 密文存储）
+    llm_api_key_encrypted = Column(Text, nullable=True)
+    llm_base_url = Column(Text, nullable=True)
+    llm_model = Column(Text, nullable=True)
+    # Embedding 配置（Key 密文存储）
+    embedding_api_key_encrypted = Column(Text, nullable=True)
+    embedding_base_url = Column(Text, nullable=True)
+    embedding_model = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ==================== Pydantic 模型 (用户 API Key) ====================
+
+class ApiKeySetRequest(BaseModel):
+    """API Key 配置请求（支持部分更新，null = 不修改）"""
+    llm_api_key: Optional[str] = None
+    llm_base_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    embedding_api_key: Optional[str] = None
+    embedding_base_url: Optional[str] = None
+    embedding_model: Optional[str] = None
+
+
+class ApiKeyStatusResponse(BaseModel):
+    """API Key 配置状态（不包含完整 Key）"""
+    llm_is_configured: bool = False
+    llm_masked_key: Optional[str] = None
+    llm_base_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    embedding_is_configured: bool = False
+    embedding_masked_key: Optional[str] = None
+    embedding_base_url: Optional[str] = None
+    embedding_model: Optional[str] = None
+    updated_at: Optional[datetime] = None
