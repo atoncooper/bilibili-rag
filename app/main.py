@@ -27,7 +27,7 @@ if settings.langsmith_endpoint:
     os.environ["LANGSMITH_ENDPOINT"] = settings.langsmith_endpoint
 
 from app.database import init_db
-from app.routers import auth, favorites, knowledge, chat
+from app.routers import auth, favorites, knowledge, chat, settings as settings_router
 from app.routers.asr import router as asr_router
 from app.routers.vector_page import router as vector_page_router
 
@@ -110,6 +110,17 @@ async def lifespan(app: FastAPI):
     # LangSmith 追踪诊断
     diagnose_langsmith()
 
+    # 初始化 ApiKeyManager（用户自定义 API Key 加密服务）
+    from app.services.llm.api_key_manager import ApiKeyManager
+    app.state.api_key_manager = ApiKeyManager(
+        encryption_key_b64=settings.api_key_encryption_key or None
+    )
+    logger.info(
+        "[API_KEY_MANAGER] initialized (enabled={})".format(
+            app.state.api_key_manager.is_enabled
+        )
+    )
+
     # 初始化 QueryRewriter
     from app.services.query import QueryRewriter
     app.state.rewriter = QueryRewriter()
@@ -186,6 +197,7 @@ app.include_router(auth.router)
 app.include_router(favorites.router)
 app.include_router(knowledge.router)
 app.include_router(chat.router)
+app.include_router(settings_router.router)
 app.include_router(asr_router)
 app.include_router(vector_page_router)
 

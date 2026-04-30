@@ -3,7 +3,7 @@ Bilibili RAG 知识库系统
 
 RAG 服务模块 - 向量存储与问答
 """
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from loguru import logger
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_chroma import Chroma
@@ -18,58 +18,85 @@ from app.services.rag.prompts import (
     summary_system_prompt,
 )
 
+if TYPE_CHECKING:
+    from app.services.llm.api_key_manager import ApiKeyManager
+
 
 class RAGService:
     """
     RAG 服务
-    
+
     负责：
     1. 向量存储管理
     2. 文档添加与检索
     3. 问答功能
+
+    支持用户自定义 API Key（通过 ApiKeyManager + DynamicEmbeddings）。
     """
-    
-    def __init__(self, collection_name: str = "bilibili_videos"):
+
+    def __init__(
+        self,
+        collection_name: str = "bilibili_videos",
+        api_key_manager: Optional["ApiKeyManager"] = None,
+    ):
         """
         初始化 RAG 服务
-        
+
         Args:
             collection_name: 向量集合名称
+            api_key_manager: 用户 API Key 管理器（可选，支持动态 Embedding Key）
         """
         self.collection_name = collection_name
-        
-        # 初始化 Embeddings (使用 DashScope 原生支持)
-        try:
-            from langchain_community.embeddings import DashScopeEmbeddings
-            self.embeddings = DashScopeEmbeddings(
-                dashscope_api_key=settings.openai_api_key,
-                model=settings.embedding_model
+        self._api_key_manager = api_key_manager
+
+        # 默认配置
+        default_embedding_api_key = settings.openai_api_key
+        default_embedding_base_url = settings.openai_base_url
+        default_embedding_model = settings.embedding_model
+
+        # 初始化 Embeddings
+        if api_key_manager and api_key_manager.is_enabled:
+            from app.services.llm.dynamic_embeddings import DynamicEmbeddings
+            self.embeddings = DynamicEmbeddings(
+                api_key_manager,
+                api_key=default_embedding_api_key,
+                base_url=default_embedding_base_url,
+                model=default_embedding_model,
             )
-            logger.info("使用 DashScopeEmbeddings 初始化成功")
-        except ImportError:
-            self.embeddings = OpenAIEmbeddings(
-                api_key=settings.openai_api_key,
-                base_url=settings.openai_base_url,
-                model=settings.embedding_model,
-                check_embedding_ctx_length=False
-            )
-        
+            logger.info("使用 DynamicEmbeddings 初始化（支持用户自定义 Embedding Key）")
+        else:
+            # 无 ApiKeyManager 时使用默认 Embeddings（兼容现有逻辑）
+            try:
+                from langchain_community.embeddings import DashScopeEmbeddings
+                self.embeddings = DashScopeEmbeddings(
+                    dashscope_api_key=default_embedding_api_key,
+                    model=default_embedding_model,
+                )
+                logger.info("使用 DashScopeEmbeddings 初始化成功")
+            except ImportError:
+                self.embeddings = OpenAIEmbeddings(
+                    api_key=default_embedding_api_key,
+                    base_url=default_embedding_base_url,
+                    model=default_embedding_model,
+                    check_embedding_ctx_length=False,
+                )
+
         # 初始化向量存储
         self.vectorstore = Chroma(
             collection_name=collection_name,
             embedding_function=self.embeddings,
-            persist_directory=settings.chroma_persist_directory
+            persist_directory=settings.chroma_persist_directory,
         )
-        
-        # 初始化 LLM
+
+        # 初始化 LLM（保留默认，实际聊天请求时由 chat.py 的 _get_llm 动态创建）
         self.llm = ChatOpenAI(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
             model=settings.llm_model,
-            temperature=0.5
+            temperature=0.5,
         )
 
-        # 语义分块器（替代 RecursiveCharacterTextSplitter）
+        # 语义分块器
         self.chunker = SemanticChunker(
             target_size=getattr(settings, "chunk_target_size", 750),
             min_size=getattr(settings, "chunk_min_size", 300),

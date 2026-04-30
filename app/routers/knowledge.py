@@ -31,10 +31,12 @@ build_tasks = {}
 
 
 def get_rag_service() -> RAGService:
-    """获取 RAG 服务实例"""
+    """获取 RAG 服务实例（支持用户自定义 API Key）"""
     global _rag_service
     if _rag_service is None:
-        _rag_service = RAGService()
+        from app.main import app
+        manager = getattr(app.state, "api_key_manager", None)
+        _rag_service = RAGService(api_key_manager=manager)
     return _rag_service
 
 

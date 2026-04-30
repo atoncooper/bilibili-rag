@@ -49,14 +49,33 @@ from app.services.rag.prompts import (
 
 router = APIRouter(prefix="/chat", tags=["对话"])
 
-def _get_llm() -> ChatOpenAI:
-    """获取 LangChain LLM 实例（支持 LangSmith 自动追踪）"""
-    if not settings.openai_api_key:
+
+def _get_llm(session_id: Optional[str] = None) -> ChatOpenAI:
+    """获取 LangChain LLM 实例（优先使用用户自定义 Key，否则回退系统默认）。"""
+    api_key = settings.openai_api_key
+    base_url = settings.openai_base_url
+    model = settings.llm_model
+
+    # 尝试获取用户自定义配置（仅从缓存读取，不查数据库）
+    if session_id:
+        from app.main import app
+        manager = getattr(app.state, "api_key_manager", None)
+        if manager and manager.is_enabled:
+            user_creds = manager.get_llm_key_sync(session_id)
+            if user_creds and user_creds.api_key:
+                api_key = user_creds.api_key
+                if user_creds.base_url:
+                    base_url = user_creds.base_url
+                if user_creds.model:
+                    model = user_creds.model
+
+    if not api_key:
         raise HTTPException(status_code=400, detail="未配置 LLM API Key")
+
     return ChatOpenAI(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url,
-        model=settings.llm_model,
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
         temperature=0.5,
     )
 
@@ -648,8 +667,14 @@ async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSes
         logger.info(f"[QUERY_REWRITE] rewrites={[(r.type.value, r.query[:50], r.confidence) for r in rewrite_result.rewrites]}")
         logger.info(f"[QUERY_REWRITE] suggested_route={rewrite_result.suggested_route}, needs_rewrite={rewrite_result.needs_rewrite}")
 
+        # 预加载用户 API Key 缓存（确保 _get_llm 能命中）
+        if request.session_id:
+            manager = getattr(http_request.app.state, "api_key_manager", None)
+            if manager and manager.is_enabled:
+                await manager.preload_cache(request.session_id, db)
+
         messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
-        llm = _get_llm()
+        llm = _get_llm(request.session_id)
         start_time = time.time()
         response = await llm.ainvoke(messages)
         latency_ms = int((time.time() - start_time) * 1000)
@@ -780,6 +805,12 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
     # 4. 更新会话时间
     await chat_history_service.touch_chat_session(db, chat_session_id)
 
+    # 5. 预加载用户 API Key 缓存（确保 _get_llm 能命中）
+    if request.session_id:
+        manager = getattr(http_request.app.state, "api_key_manager", None)
+        if manager and manager.is_enabled:
+            await manager.preload_cache(request.session_id, db)
+
     try:
         # === Query 改写 ===
         rewriter = http_request.app.state.rewriter
@@ -789,7 +820,7 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
         logger.info(f"[QUERY_REWRITE] suggested_route={rewrite_result.suggested_route}, needs_rewrite={rewrite_result.needs_rewrite}")
 
         messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
-        llm = _get_llm()
+        llm = _get_llm(request.session_id)
 
         # 获取 rewrite 信息用于附加到 sources
         rewrite = rewrite_result.rewrites[0] if rewrite_result.rewrites else None
