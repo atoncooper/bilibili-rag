@@ -583,3 +583,46 @@ export const asrApi = {
     getVersions: (bvid: string, cid: number) =>
         request<VideoPageVersionInfo[]>(`/asr/versions?bvid=${bvid}&cid=${cid}`),
 };
+
+// ==================== 用户 API Key 设置 ====================
+
+export interface CredentialsStatus {
+    llm_is_configured: boolean;
+    llm_masked_key: string | null;
+    llm_base_url: string | null;
+    llm_model: string | null;
+    embedding_is_configured: boolean;
+    embedding_masked_key: string | null;
+    embedding_base_url: string | null;
+    embedding_model: string | null;
+    updated_at: string | null;
+}
+
+export interface SetCredentialsParams {
+    llm_api_key?: string;
+    llm_base_url?: string;
+    llm_model?: string;
+    embedding_api_key?: string;
+    embedding_base_url?: string;
+    embedding_model?: string;
+}
+
+export const settingsApi = {
+    getCredentialsStatus: (sessionId: string) =>
+        request<CredentialsStatus>(`/settings/credentials/status?session_id=${sessionId}`),
+
+    setCredentials: (sessionId: string, params: SetCredentialsParams) =>
+        request<{ message: string }>(
+            `/settings/credentials?session_id=${sessionId}`,
+            {
+                method: "POST",
+                body: JSON.stringify(params),
+            }
+        ),
+
+    deleteCredentials: (sessionId: string) =>
+        request<{ message: string }>(
+            `/settings/credentials?session_id=${sessionId}`,
+            { method: "DELETE" }
+        ),
+};
