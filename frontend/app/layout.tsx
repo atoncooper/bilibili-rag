@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   title: "BiliMind - 收藏夹知识库",
   description: "将你的 B站收藏夹变成可对话的知识库",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },      // 你的 SVG 图标
+      { url: "/favicon.ico", type: "image/x-icon" },    // 可选：兼容旧浏览器
+    ],
   },
 };
 

@@ -9,8 +9,9 @@ import ChatPanel from "@/components/ChatPanel";
 import ASRViewerModal from "@/components/ASRViewerModal";
 import { DockContext } from "@/lib/dock-context";
 import { dockModules } from "@/components/dock-modules";
-import { ChatSidebar } from "@/components/chat-sidebar";
 import { UserInfo, authApi, chatApi, VectorPageStatusResponse, WorkspacePage } from "@/lib/api";
+import { ChatSidebarRenameDialog } from "@/components/chat-sidebar/ChatSidebarRenameDialog";
+import { ChatSidebarDeleteDialog } from "@/components/chat-sidebar/ChatSidebarDeleteDialog";
 
 export default function Home() {
   const [session, setSession] = useState<string | null>(null);
@@ -42,6 +43,11 @@ export default function Home() {
     pageIndex: number;
     pageTitle: string;
   }>({ isOpen: false, bvid: "", cid: 0, pageIndex: 0, pageTitle: "" });
+
+  // 历史会话弹窗状态（必须在 page.tsx 最外层渲染，才能突破 Dock 面板的 transform 层叠上下文）
+  const [renameDialog, setRenameDialog] = useState<{ sessionId: string; title: string } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ sessionId: string; title: string } | null>(null);
+  const [sessionRefreshKey, setSessionRefreshKey] = useState(0);
 
   useEffect(() => {
     const s = localStorage.getItem("bili_session");
@@ -118,6 +124,30 @@ export default function Home() {
     setAsrModal((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
+  const handleRenameConfirm = useCallback(async (title: string) => {
+    if (!renameDialog) return;
+    try {
+      await chatApi.updateSession(renameDialog.sessionId, { title });
+      setSessionRefreshKey((k) => k + 1);
+    } catch (e) {
+      console.error("重命名失败", e);
+    } finally {
+      setRenameDialog(null);
+    }
+  }, [renameDialog]);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteDialog) return;
+    try {
+      await chatApi.deleteSession(deleteDialog.sessionId);
+      setSessionRefreshKey((k) => k + 1);
+    } catch (e) {
+      console.error("删除失败", e);
+    } finally {
+      setDeleteDialog(null);
+    }
+  }, [deleteDialog]);
+
   const handleVectorizationDone = useCallback((bvid: string, cid: number, status: VectorPageStatusResponse) => {
     setExternalVectorUpdate({
       bvid,
@@ -171,6 +201,10 @@ export default function Home() {
     : null;
   const ActivePanel = activeModule?.panel;
 
+  const refreshSessions = useCallback(() => {
+    setSessionRefreshKey((k) => k + 1);
+  }, []);
+
   const dockContextValue = useMemo(
     () => ({
       sessionId: session,
@@ -180,8 +214,17 @@ export default function Home() {
       externalVectorUpdate,
       workspacePages,
       onWorkspacePagesChange,
+      activeChatSessionId,
+      onSelectSession: handleSelectSession,
+      onCreateSession: handleCreateSession,
+      renameDialog,
+      setRenameDialog,
+      deleteDialog,
+      setDeleteDialog,
+      sessionRefreshKey,
+      refreshSessions,
     }),
-    [session, onBuildDone, onSelectionChange, onOpenASR, externalVectorUpdate, workspacePages, onWorkspacePagesChange]
+    [session, onBuildDone, onSelectionChange, onOpenASR, externalVectorUpdate, workspacePages, onWorkspacePagesChange, activeChatSessionId, handleSelectSession, handleCreateSession, renameDialog, deleteDialog, sessionRefreshKey, refreshSessions]
   );
 
   return (
@@ -263,12 +306,6 @@ export default function Home() {
             </section>
           ) : (
             <section className="workspace">
-              <ChatSidebar
-                sessionId={session}
-                activeChatSessionId={activeChatSessionId}
-                onSelectSession={handleSelectSession}
-                onCreateSession={handleCreateSession}
-              />
               <section className="panel panel-chat" style={{ flex: 1, width: "100%" }}>
                 <ChatPanel
                   statsKey={statsKey}
@@ -316,6 +353,27 @@ export default function Home() {
             pageIndex={asrModal.pageIndex}
             pageTitle={asrModal.pageTitle}
             onVectorizationDone={handleVectorizationDone}
+          />
+        )}
+        {/* 历史会话弹窗 — 必须在 app-shell 之外（与 DockPanelWrapper 同级）才能正常显示 */}
+        {renameDialog && (
+          <ChatSidebarRenameDialog
+            open={!!renameDialog}
+            currentTitle={renameDialog.title}
+            onOpenChange={(open) => {
+              if (!open) setRenameDialog(null);
+            }}
+            onConfirm={handleRenameConfirm}
+          />
+        )}
+        {deleteDialog && (
+          <ChatSidebarDeleteDialog
+            open={!!deleteDialog}
+            sessionTitle={deleteDialog.title}
+            onOpenChange={(open) => {
+              if (!open) setDeleteDialog(null);
+            }}
+            onConfirm={handleDeleteConfirm}
           />
         )}
       </div>

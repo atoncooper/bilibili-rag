@@ -115,7 +115,7 @@ export function ChatSidebarItem({
             <Card className="min-w-[156px] overflow-visible rounded-xl border border-slate-100 bg-white py-0 shadow-lg shadow-black/[0.04] ring-0">
               <CardContent className="flex flex-col gap-1.5 p-2">
                 <DropdownMenuItem
-                  onClick={onRename}
+                  onSelect={onRename}
                   className="cursor-pointer gap-3 text-[13px] text-slate-600 hover:bg-slate-50/50 data-[highlighted]:bg-slate-50/50 data-[highlighted]:text-slate-600"
                 >
                   <div className="ml-0.5 flex h-7 w-7 items-center justify-center rounded-md bg-slate-50">
@@ -124,7 +124,7 @@ export function ChatSidebarItem({
                   重命名
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={onDelete}
+                  onSelect={onDelete}
                   className="cursor-pointer gap-3 text-[13px] text-red-500 hover:bg-red-50/40 data-[highlighted]:bg-red-50/40 data-[highlighted]:text-red-500"
                 >
                   <div className="ml-0.5 flex h-7 w-7 items-center justify-center rounded-md bg-red-50">
