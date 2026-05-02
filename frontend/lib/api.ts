@@ -30,8 +30,15 @@ async function request<T>(
     }
 
     if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || `请求失败: ${response.status}`);
+        const text = await response.text();
+        let message = text || `请求失败: ${response.status}`;
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed.detail) {
+                message = typeof parsed.detail === "string" ? parsed.detail : JSON.stringify(parsed.detail);
+            }
+        } catch {}
+        throw new Error(message);
     }
 
     return response.json();
@@ -340,7 +347,15 @@ export const favoritesApi = {
         ),
 };
 
-// 知识库相关
+export interface VectorizedPageItem {
+    bvid: string;
+    cid: number;
+    page_index: number;
+    page_title?: string;
+    video_title?: string;
+    vector_chunk_count: number;
+    vectorized_at?: string;
+}
 export const knowledgeApi = {
     // 获取统计信息
     getStats: () => request<KnowledgeStats>("/knowledge/stats"),
@@ -384,6 +399,10 @@ export const knowledgeApi = {
     // 获取视频分P列表
     getVideoPages: (bvid: string) =>
         request<VideoPagesResponse>(`/knowledge/video/${bvid}/pages`),
+
+    // 获取已向量化的分P列表
+    getVectorizedPages: (sessionId: string) =>
+        request<VectorizedPageItem[]>(`/knowledge/pages/vectorized?session_id=${sessionId}`),
 };
 
 // 对话相关
@@ -726,4 +745,159 @@ export interface UsageSummary {
 export const billingApi = {
     getSummary: (sessionId: string, days = 30) =>
         request<UsageSummary>(`/billing/summary?session_id=${sessionId}&days=${days}`),
+};
+
+// ==================== Quiz 题目训练系统 ====================
+
+export interface QuizGenerateParams {
+    session_id: string;
+    folder_ids?: number[];
+    pages?: Array<{ bvid: string; cid: number; page_index: number; page_title?: string }>;
+    question_count?: number;
+    difficulty?: string;
+    title?: string;
+}
+
+export interface QuizGenerateResponse {
+    quiz_uuid: string;
+    question_count: number;
+    estimated_cost_tokens: number;
+}
+
+export interface QuizQuestion {
+    question_uuid: string;
+    question_type: string;
+    difficulty: string;
+    question_text: string;
+    options?: string[];
+    correct_answer?: string | string[];
+    explanation?: string;
+    keywords?: string[];
+}
+
+export interface QuizSetData {
+    quiz_uuid: string;
+    title: string;
+    status: string;
+    question_count: number;
+    type_distribution?: Record<string, number>;
+    difficulty: string;
+    total_score: number;
+    passing_score: number;
+    source_type?: string;
+    source_pages?: Array<{ bvid: string; cid: number; page_index: number; page_title?: string }>;
+    created_at: string;
+    questions: QuizQuestion[];
+}
+
+export interface QuizAnswerItem {
+    question_uuid: string;
+    answer: string | string[];
+}
+
+export interface QuizAnswerResult {
+    question_uuid: string;
+    is_correct: boolean | null;
+    auto_score: number | null;
+    correct_answer: string | string[];
+    grading_note?: string;
+}
+
+export interface QuizSubmissionResult {
+    submission_uuid: string;
+    score: number | null;
+    passed: boolean | null;
+    correct_count: number;
+    total_count: number;
+    results: QuizAnswerResult[];
+}
+
+export interface QuizHistoryItem {
+    submission_uuid: string | null;
+    quiz_uuid: string;
+    title: string;
+    status?: string;
+    question_count?: number;
+    difficulty?: string;
+    source_type?: string;
+    score: number | null;
+    passed: boolean | null;
+    correct_count: number;
+    total_question_count: number;
+    time_spent_seconds: number | null;
+    submitted_at: string | null;
+    created_at?: string;
+}
+
+export interface QuizHistoryResponse {
+    submissions: QuizHistoryItem[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_more: boolean;
+}
+
+export interface WrongAnswerItem {
+    question_uuid: string;
+    quiz_uuid: string;
+    question_type: string;
+    question_text: string;
+    options?: string[];
+    user_answer: string | string[];
+    correct_answer: string | string[];
+    explanation?: string;
+    times_wrong: number;
+    last_attempt_at: string;
+}
+
+export interface WrongAnswerResponse {
+    wrong_answers: WrongAnswerItem[];
+    total: number;
+}
+
+export const quizApi = {
+    generate: (params: QuizGenerateParams) => {
+        const sp = new URLSearchParams();
+        sp.set("session_id", params.session_id);
+        if (params.folder_ids?.length) sp.set("folder_ids", params.folder_ids.join(","));
+        if (params.question_count) sp.set("question_count", String(params.question_count));
+        if (params.difficulty) sp.set("difficulty", params.difficulty);
+        if (params.title) sp.set("title", params.title);
+        const body = params.pages?.length ? JSON.stringify(params.pages) : undefined;
+        return request<QuizGenerateResponse>(`/quiz/generate?${sp.toString()}`, {
+            method: "POST",
+            ...(body ? { body, headers: { "Content-Type": "application/json" } } : {}),
+        });
+    },
+
+    getQuiz: (quizUuid: string, includeAnswers = false) =>
+        request<QuizSetData>(`/quiz/${quizUuid}${includeAnswers ? "?include_answers=true" : ""}`),
+
+    submit: (params: {
+        quiz_uuid: string;
+        session_id: string;
+        answers: QuizAnswerItem[];
+        time_spent_seconds?: number;
+    }) =>
+        request<QuizSubmissionResult>("/quiz/submit", {
+            method: "POST",
+            body: JSON.stringify(params),
+        }),
+
+    getHistory: (sessionId: string, page = 1, pageSize = 10) =>
+        request<QuizHistoryResponse>(
+            `/quiz/history?session_id=${sessionId}&page=${page}&page_size=${pageSize}`
+        ),
+
+    getWrongAnswers: (sessionId: string, folderIds?: number[]) =>
+        request<WrongAnswerResponse>(
+            `/quiz/wrong-answers?session_id=${sessionId}${folderIds?.length ? `&folder_ids=${folderIds.join(",")}` : ""}`
+        ),
+
+    exportData: async (sessionId: string, format: "jsonl" | "csv" | "sft" = "jsonl", folderIds?: number[]) => {
+        const url = `${API_BASE_URL}/quiz/export?session_id=${encodeURIComponent(sessionId)}&format=${format}${folderIds?.length ? `&folder_ids=${folderIds.join(",")}` : ""}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("导出失败");
+        return res.blob();
+    },
 };
