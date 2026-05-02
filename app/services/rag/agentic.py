@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextvars
 import re
 from typing import Any, Optional
 
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
+from langchain_core.outputs import LLMResult
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -35,6 +38,37 @@ except ImportError:
 from . import RAGService
 
 
+class _TokenAccumulator(BaseCallbackHandler):
+    """多轮 LLM 调用 token 累计回调 — 在线程/coroutine 安全的方式下累计 total_tokens。"""
+
+    def __init__(self):
+        self.total_tokens = 0
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        # 路径 1: 非流式 — llm_output["token_usage"]
+        if response.llm_output:
+            tu = response.llm_output.get("token_usage")
+            if tu and isinstance(tu, dict):
+                t = tu.get("total_tokens", 0)
+                if t > 0:
+                    self.total_tokens += t
+                    return
+        # 路径 2: 流式 — generations[0][0].message.usage_metadata
+        try:
+            msg = response.generations[0][0].message
+            um = getattr(msg, "usage_metadata", None) or {}
+            t = um.get("total_tokens", 0)
+            if t > 0:
+                self.total_tokens += t
+        except (IndexError, AttributeError):
+            pass
+
+
+_token_acc_var: contextvars.ContextVar[Optional[_TokenAccumulator]] = contextvars.ContextVar(
+    "agentic_token_acc", default=None
+)
+
+
 class ReasoningStep(BaseModel):
     step: int
     action: str
@@ -53,6 +87,7 @@ class AgenticAnswer(BaseModel):
     synthesis_method: str
     hops_used: int
     avg_recall_score: float = 0.0
+    total_tokens: int = 0
 
 
 class AgenticState(BaseModel):
@@ -317,12 +352,20 @@ class AgenticRAGService:
             )
         )
 
+    async def _invoke_llm(self, prompt: str) -> str:
+        """调用 LLM 并自动累计 token 用量（通过 contextvar 回调）。"""
+        acc = _token_acc_var.get()
+        config: dict[str, Any] = {"timeout": 30}
+        if acc is not None:
+            config["callbacks"] = [acc]
+        response = await self.rag.llm.ainvoke([HumanMessage(content=prompt)], config=config)
+        return str(response.content or "").strip()
+
     async def _build_draft_answer(self, question: str, context: str) -> str:
         if not context.strip():
             return ""
         prompt = agentic_draft_system_prompt(question, context)
-        response = await self.rag.llm.ainvoke([HumanMessage(content=prompt)], config={"timeout": 30})
-        return str(response.content or "").strip()
+        return await self._invoke_llm(prompt)
 
     async def _run_reflection(self, state: AgenticState) -> None:
         draft_answer = await self._build_draft_answer(state.question, state.current_context)
@@ -330,8 +373,7 @@ class AgenticRAGService:
         prompt = agentic_reflection_system_prompt(
             state.question, draft_answer, state.current_context
         )
-        response = await self.rag.llm.ainvoke([HumanMessage(content=prompt)], config={"timeout": 30})
-        raw = str(response.content or "").strip()
+        raw = await self._invoke_llm(prompt)
         match = re.search(r"\b(sufficient|insufficient)\b", raw, re.IGNORECASE)
         verdict = match.group(1).lower() if match else "insufficient"
         state.verdict = verdict
@@ -350,8 +392,7 @@ class AgenticRAGService:
             return
 
         prompt = agentic_synthesis_system_prompt(state.question, state.current_context)
-        response = await self.rag.llm.ainvoke([HumanMessage(content=prompt)], config={"timeout": 30})
-        state.answer = str(response.content or "").strip() or "没有生成有效答案。"
+        state.answer = await self._invoke_llm(prompt) or "没有生成有效答案。"
 
     async def _fallback_loop(self, state: AgenticState) -> AgenticState:
         while state.hop < state.max_hops:
@@ -380,6 +421,9 @@ class AgenticRAGService:
             candidate_queries=self._build_candidate_queries(question, rewrite_result),
         )
 
+        # 设置 token 累计器（coroutine-safe，通过 contextvar 传递）
+        accumulator = _TokenAccumulator()
+        token = _token_acc_var.set(accumulator)
         try:
             if self.graph:
                 result = AgenticState.from_dict(await self.graph.ainvoke(state.to_dict()))
@@ -396,10 +440,13 @@ class AgenticRAGService:
                 synthesis_method=synthesis_method,
                 hops_used=result.hop,
                 avg_recall_score=avg_recall,
+                total_tokens=accumulator.total_tokens,
             )
         except Exception as exc:
             logger.error(f"Agentic RAG failed: {exc}")
             raise
+        finally:
+            _token_acc_var.reset(token)
 
 
 def create_agentic_rag_service(
