@@ -516,7 +516,7 @@ export default function SourcesPanelContent({
           {/* 工作区管理面板 */}
           {workspacePages.length > 0 && (
             <div className="mb-3 pb-3 border-b border-dashed border-[var(--border)]">
-              <div className="text-xs font-semibold text-[var(--muted)] mb-2 uppercase tracking-wider">
+              <div className="text-xs font-semibold text-[var(--muted-foreground)] mb-2 uppercase tracking-wider">
                 工作区 ({workspacePages.length})
               </div>
               <WorkspacePanel
@@ -533,9 +533,9 @@ export default function SourcesPanelContent({
             </div>
           )}
           {loading ? (
-            <div className="text-center text-sm text-[var(--muted)] py-6">加载中...</div>
+            <div className="text-center text-sm text-[var(--muted-foreground)] py-6">加载中...</div>
           ) : folders.length === 0 ? (
-            <div className="text-center text-sm text-[var(--muted)] py-6">暂无收藏夹</div>
+            <div className="text-center text-sm text-[var(--muted-foreground)] py-6">暂无收藏夹</div>
           ) : (
             <div className="space-y-2">
               {folders.map((f) => {
@@ -570,9 +570,9 @@ export default function SourcesPanelContent({
                     {f.expanded && (
                       <div className="folder-list">
                         {f.loading ? (
-                          <div className="text-xs text-[var(--muted)]">加载中...</div>
+                          <div className="text-xs text-[var(--muted-foreground)]">加载中...</div>
                         ) : f.videos?.length === 0 ? (
-                          <div className="text-xs text-[var(--muted)]">暂无视频</div>
+                          <div className="text-xs text-[var(--muted-foreground)]">暂无视频</div>
                         ) : (
                           f.videos?.map((v) => {
                             const isVideoExpanded = expandedVideos.has(v.bvid);
@@ -588,7 +588,7 @@ export default function SourcesPanelContent({
                                   </span>
                                   <span className="truncate" title={v.title}>{v.title}</span>
                                   {v.page_count && v.page_count > 1 && (
-                                    <span className="ml-1 text-xs text-[var(--muted)]">({v.page_count}P)</span>
+                                    <span className="ml-1 text-xs text-[var(--muted-foreground)]">({v.page_count}P)</span>
                                   )}
                                 </div>
                                 {isVideoExpanded && pages && (
@@ -673,7 +673,7 @@ export default function SourcesPanelContent({
         {progress && building && (
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-2">
-              <span className="text-[var(--muted)] truncate">{progress.current_step}</span>
+              <span className="text-[var(--muted-foreground)] truncate">{progress.current_step}</span>
               <span className="text-[var(--accent)]">{progress.progress}%</span>
             </div>
             <div className="progress">
@@ -683,9 +683,9 @@ export default function SourcesPanelContent({
         )}
 
         {/* 消息 */}
-        {message && <div className="text-xs text-[var(--muted)] mb-3">{message}</div>}
-        {organizeMessage && <div className="text-xs text-[var(--muted)] mb-3">{organizeMessage}</div>}
-        {vectorMessage && <div className="text-xs text-[var(--muted)] mb-3">{vectorMessage}</div>}
+        {message && <div className="text-xs text-[var(--muted-foreground)] mb-3">{message}</div>}
+        {organizeMessage && <div className="text-xs text-[var(--muted-foreground)] mb-3">{organizeMessage}</div>}
+        {vectorMessage && <div className="text-xs text-[var(--muted-foreground)] mb-3">{vectorMessage}</div>}
 
         {/* 主按钮 */}
         <button
@@ -696,7 +696,7 @@ export default function SourcesPanelContent({
           {getButtonText()}
         </button>
 
-        <p className="text-xs text-[var(--muted)] text-center mt-2">
+        <p className="text-xs text-[var(--muted-foreground)] text-center mt-2">
           入库后可在右侧进行问答
         </p>
       </div>

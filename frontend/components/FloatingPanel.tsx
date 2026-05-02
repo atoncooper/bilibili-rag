@@ -11,6 +11,7 @@ interface FloatingPanelProps {
   children: ReactNode;
   defaultPosition?: { x: number; y: number };
   defaultSize?: { width: number; height: number };
+  className?: string;
 }
 
 const MIN_WIDTH = 280;
@@ -41,6 +42,7 @@ export default function FloatingPanel({
   children,
   defaultPosition = { x: 80, y: 80 },
   defaultSize = { width: 380, height: 600 },
+  className,
 }: FloatingPanelProps) {
   const [position, setPosition] = useState(() =>
     clampPosition(defaultPosition.x, defaultPosition.y, defaultSize.width, defaultSize.height)
@@ -151,7 +153,7 @@ export default function FloatingPanel({
 
   return (
     <div
-      className="floating-panel"
+      className={`floating-panel${className ? ` ${className}` : ""}`}
       style={{
         position: "fixed",
         left: position.x,

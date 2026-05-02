@@ -553,9 +553,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           padding-bottom: 24px;
           overflow-y: auto;
           background:
-            radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 28%),
-            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          color: #0f172a;
+            radial-gradient(circle at top right, rgba(6, 182, 212, 0.1), transparent 28%),
+            linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          color: #e2e8f0;
           font-family: system-ui, -apple-system, sans-serif;
           position: relative;
         }
@@ -577,16 +577,16 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           backdrop-filter: blur(8px);
         }
         .sk-toast.success {
-          background: rgba(240, 253, 244, 0.96);
-          color: #166534;
-          border: 1px solid #bbf7d0;
-          box-shadow: 0 10px 32px rgba(22, 101, 52, 0.08);
+          background: rgba(34, 197, 94, 0.1);
+          color: #4ade80;
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          box-shadow: 0 10px 32px rgba(34, 197, 94, 0.08);
         }
         .sk-toast.error {
-          background: rgba(254, 242, 242, 0.96);
-          color: #991b1b;
-          border: 1px solid #fecaca;
-          box-shadow: 0 10px 32px rgba(153, 27, 27, 0.08);
+          background: rgba(248, 113, 113, 0.1);
+          color: #f87171;
+          border: 1px solid rgba(248, 113, 113, 0.2);
+          box-shadow: 0 10px 32px rgba(248, 113, 113, 0.08);
         }
         .sk-toast-icon { display: flex; }
         @keyframes skSlideIn {
@@ -602,10 +602,10 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           align-items: flex-start;
           padding: 18px 18px 16px;
           border-radius: 18px;
-          border: 1px solid rgba(226, 232, 240, 0.9);
+          border: 1px solid rgba(48, 54, 61, 0.9);
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
-          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+            linear-gradient(135deg, rgba(22, 27, 34, 0.98) 0%, rgba(33, 38, 45, 0.94) 100%);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
         }
         .sk-kicker {
           display: inline-flex;
@@ -613,8 +613,8 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           margin-bottom: 8px;
           padding: 4px 10px;
           border-radius: 999px;
-          background: rgba(37, 99, 235, 0.08);
-          color: #1d4ed8;
+          background: rgba(6, 182, 212, 0.08);
+          color: #06b6d4;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -629,7 +629,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         .sk-head p {
           max-width: 540px;
           font-size: 12.5px;
-          color: #64748b;
+          color: #8b949e;
           margin: 0;
         }
         .sk-head-stat {
@@ -638,11 +638,11 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           min-width: 108px;
           padding: 12px 14px;
           border-radius: 14px;
-          background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid rgba(147, 197, 253, 0.9);
-          color: #1e3a8a;
+          background: linear-gradient(160deg, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0.15) 100%);
+          border: 1px solid rgba(6, 182, 212, 0.9);
+          color: #22d3ee;
           text-align: right;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+          box-shadow: inset 0 1px 0 rgba(22, 27, 34, 0.65);
         }
         .sk-head-stat strong {
           font-size: 22px;
@@ -667,9 +667,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           gap: 12px;
           padding: 16px;
           border-radius: 18px;
-          border: 1px solid rgba(226, 232, 240, 0.92);
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+          border: 1px solid rgba(48, 54, 61, 0.92);
+          background: linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          box-shadow: 0 14px 32px rgba(0, 0, 0, 0.05);
         }
         .sk-overview-icon {
           display: inline-flex;
@@ -678,9 +678,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           width: 42px;
           height: 42px;
           border-radius: 14px;
-          color: #2563eb;
-          background: rgba(37, 99, 235, 0.08);
-          border: 1px solid rgba(191, 219, 254, 0.85);
+          color: #06b6d4;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.85);
           flex-shrink: 0;
         }
         .sk-overview-icon svg,
@@ -694,34 +694,34 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           display: block;
           font-size: 15px;
           font-weight: 700;
-          color: #0f172a;
+          color: #e2e8f0;
           letter-spacing: -0.02em;
         }
         .sk-overview-card p {
           margin: 2px 0 0;
           font-size: 12px;
-          color: #64748b;
+          color: #8b949e;
           font-weight: 500;
         }
 
         /* ── Section ── */
         .sk-section {
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           border-radius: 18px;
-          background: rgba(255, 255, 255, 0.94);
+          background: rgba(22, 27, 34, 0.94);
           display: flex;
           flex-direction: column;
           flex-shrink: 0;
           overflow: hidden;
-          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.05);
         }
         .sk-section-head {
           display: flex;
           align-items: center;
           gap: 10px;
           padding: 15px 18px;
-          border-bottom: 1px solid rgba(226, 232, 240, 0.88);
-          background: linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(255, 255, 255, 0.92) 100%);
+          border-bottom: 1px solid rgba(48, 54, 61, 0.88);
+          background: linear-gradient(180deg, rgba(33, 38, 45, 0.95) 0%, rgba(22, 27, 34, 0.92) 100%);
         }
         .sk-section-head h3 {
           font-size: 14px;
@@ -736,7 +736,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         .sk-section-titlebox p {
           margin: 3px 0 0;
           font-size: 12px;
-          color: #64748b;
+          color: #8b949e;
           line-height: 1.5;
         }
         .sk-section-icon {
@@ -746,9 +746,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           width: 32px;
           height: 32px;
           border-radius: 10px;
-          color: #2563eb;
-          background: rgba(37, 99, 235, 0.08);
-          border: 1px solid rgba(147, 197, 253, 0.55);
+          color: #06b6d4;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.55);
         }
         .sk-config-layout {
           display: grid;
@@ -761,8 +761,8 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           gap: 14px;
           padding: 18px;
           background:
-            linear-gradient(180deg, rgba(239, 246, 255, 0.9) 0%, rgba(248, 250, 252, 0.85) 100%);
-          border-right: 1px solid rgba(226, 232, 240, 0.88);
+            linear-gradient(180deg, rgba(6, 182, 212, 0.06) 0%, rgba(33, 38, 45, 0.85) 100%);
+          border-right: 1px solid rgba(48, 54, 61, 0.88);
         }
         .sk-config-badge {
           display: flex;
@@ -770,8 +770,8 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           gap: 12px;
           padding: 14px;
           border-radius: 16px;
-          background: rgba(255, 255, 255, 0.72);
-          border: 1px solid rgba(191, 219, 254, 0.92);
+          background: rgba(22, 27, 34, 0.72);
+          border: 1px solid rgba(6, 182, 212, 0.92);
         }
         .sk-config-badge-icon {
           display: inline-flex;
@@ -780,9 +780,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           width: 42px;
           height: 42px;
           border-radius: 14px;
-          color: #2563eb;
-          background: rgba(37, 99, 235, 0.1);
-          border: 1px solid rgba(147, 197, 253, 0.8);
+          color: #06b6d4;
+          background: rgba(6, 182, 212, 0.1);
+          border: 1px solid rgba(6, 182, 212, 0.8);
           flex-shrink: 0;
           line-height: 0;
         }
@@ -790,14 +790,14 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           display: block;
           font-size: 15px;
           font-weight: 700;
-          color: #0f172a;
+          color: #e2e8f0;
           letter-spacing: -0.02em;
         }
         .sk-config-badge span {
           display: block;
           margin-top: 2px;
           font-size: 11px;
-          color: #64748b;
+          color: #8b949e;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           font-weight: 700;
@@ -806,7 +806,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           margin: 0;
           font-size: 12.5px;
           line-height: 1.65;
-          color: #475569;
+          color: #8b949e;
         }
         .sk-config-points {
           display: flex;
@@ -818,17 +818,17 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           align-items: flex-start;
           gap: 9px;
           font-size: 12px;
-          color: #475569;
+          color: #8b949e;
           line-height: 1.55;
         }
         .sk-config-point-dot {
           width: 7px;
           height: 7px;
           border-radius: 999px;
-          background: #3b82f6;
+          background: #06b6d4;
           flex-shrink: 0;
           margin-top: 6px;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+          box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.14);
         }
 
         .sk-add-btn {
@@ -836,20 +836,20 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           align-items: center;
           gap: 6px;
           padding: 8px 13px;
-          border: 1px solid rgba(191, 219, 254, 0.95);
+          border: 1px solid rgba(6, 182, 212, 0.95);
           border-radius: 10px;
-          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-          color: #0f172a;
+          background: linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          color: #e2e8f0;
           font-size: 12.5px;
           font-weight: 650;
           cursor: pointer;
           transition: background .12s, border-color .12s, transform .12s, box-shadow .12s;
         }
         .sk-add-btn:hover {
-          background: #eff6ff;
-          border-color: #93c5fd;
+          background: rgba(6, 182, 212, 0.08);
+          border-color: #22d3ee;
           transform: translateY(-1px);
-          box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+          box-shadow: 0 10px 24px rgba(6, 182, 212, 0.12);
         }
 
         /* ── Loading / Empty ── */
@@ -857,24 +857,24 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           padding: 28px;
           text-align: center;
           font-size: 13px;
-          color: #94a3b8;
+          color: #8b949e;
         }
         .sk-empty {
           padding: 30px 24px;
           text-align: center;
           background:
-            radial-gradient(circle at top, rgba(59, 130, 246, 0.06), transparent 40%),
+            radial-gradient(circle at top, rgba(6, 182, 212, 0.06), transparent 40%),
             transparent;
         }
         .sk-empty p {
           margin: 0;
           font-size: 13px;
-          color: #475569;
+          color: #8b949e;
           font-weight: 600;
         }
         .sk-empty-sub {
           font-size: 12px !important;
-          color: #94a3b8 !important;
+          color: #8b949e !important;
           margin-top: 6px !important;
           font-weight: 500 !important;
         }
@@ -894,26 +894,26 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           align-items: stretch;
           justify-content: space-between;
           padding: 16px;
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           border-radius: 16px;
           transition: background .12s, transform .12s, box-shadow .12s, border-color .12s;
           gap: 12px;
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          background: linear-gradient(180deg, #161b22 0%, #21262d 100%);
           min-width: 0;
         }
         .sk-cred-card.is-default {
           background:
             radial-gradient(circle at top right, rgba(34, 197, 94, 0.11), transparent 34%),
-            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          border-color: rgba(134, 239, 172, 0.95);
+            linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          border-color: rgba(34, 197, 94, 0.25);
         }
         .sk-cred-card:hover {
           transform: translateY(-2px);
-          border-color: #bfdbfe;
-          box-shadow: 0 14px 32px rgba(37, 99, 235, 0.1);
+          border-color: rgba(6, 182, 212, 0.15);
+          box-shadow: 0 14px 32px rgba(6, 182, 212, 0.1);
         }
         .sk-cred-card.is-default:hover {
-          box-shadow: 0 16px 34px rgba(22, 163, 74, 0.1);
+          box-shadow: 0 16px 34px rgba(34, 197, 94, 0.12);
         }
 
         .sk-cred-top {
@@ -930,9 +930,9 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           width: 38px;
           height: 38px;
           border-radius: 12px;
-          color: #2563eb;
-          background: rgba(37, 99, 235, 0.08);
-          border: 1px solid rgba(191, 219, 254, 0.8);
+          color: #06b6d4;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.8);
           flex-shrink: 0;
         }
         .sk-cred-info {
@@ -961,11 +961,11 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           gap: 3px;
           font-size: 10px;
           font-weight: 700;
-          color: #166534;
-          background: #dcfce7;
+          color: #4ade80;
+          background: rgba(34, 197, 94, 0.15);
           padding: 3px 7px;
           border-radius: 999px;
-          border: 1px solid #bbf7d0;
+          border: 1px solid rgba(34, 197, 94, 0.2);
           flex-shrink: 0;
         }
         .sk-cred-meta {
@@ -973,33 +973,33 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           align-items: flex-start;
           gap: 8px;
           font-size: 11.5px;
-          color: #64748b;
+          color: #8b949e;
           flex-wrap: wrap;
         }
         .sk-provider-tag {
           font-weight: 700;
-          color: #1d4ed8;
+          color: #06b6d4;
           text-transform: capitalize;
           flex-shrink: 0;
           padding: 4px 8px;
           border-radius: 999px;
-          background: rgba(37, 99, 235, 0.08);
+          background: rgba(6, 182, 212, 0.08);
         }
         .sk-masked {
           font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
           font-size: 11px;
           padding: 4px 8px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid rgba(226, 232, 240, 0.95);
+          background: #21262d;
+          border: 1px solid rgba(48, 54, 61, 0.95);
         }
         .sk-model {
           font-size: 11px;
-          color: #475569;
+          color: #8b949e;
           padding: 4px 8px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid rgba(226, 232, 240, 0.95);
+          background: #21262d;
+          border: 1px solid rgba(48, 54, 61, 0.95);
         }
 
         .sk-cred-actions {
@@ -1009,30 +1009,30 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           flex-shrink: 0;
         }
         .sk-act-btn {
-          background: #fff;
-          border: 1px solid rgba(226, 232, 240, 0.95);
+          background: #161b22;
+          border: 1px solid rgba(48, 54, 61, 0.95);
           padding: 8px;
           border-radius: 10px;
           cursor: pointer;
-          color: #64748b;
+          color: #8b949e;
           display: flex;
           transition: color .12s, background .12s, border-color .12s, transform .12s;
         }
         .sk-act-btn:hover {
-          color: #0f172a;
-          background: #eff6ff;
-          border-color: #bfdbfe;
+          color: #e2e8f0;
+          background: rgba(6, 182, 212, 0.08);
+          border-color: rgba(6, 182, 212, 0.15);
           transform: translateY(-1px);
         }
         .sk-act-star:hover {
-          color: #ca8a04;
-          border-color: #fde047;
-          background: #fefce8;
+          color: #fbbf24;
+          border-color: rgba(251, 191, 36, 0.2);
+          background: rgba(251, 191, 36, 0.1);
         }
         .sk-act-del:hover {
-          color: #dc2626;
-          border-color: #fecaca;
-          background: #fef2f2;
+          color: #f87171;
+          border-color: rgba(248, 113, 113, 0.2);
+          background: rgba(248, 113, 113, 0.1);
         }
 
         /* ── Chip ── */
@@ -1050,14 +1050,14 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           line-height: 1;
         }
         .sk-chip.on {
-          background: #f0fdf4;
-          color: #166534;
-          border-color: #bbf7d0;
+          background: rgba(34, 197, 94, 0.1);
+          color: #4ade80;
+          border-color: rgba(34, 197, 94, 0.2);
         }
         .sk-chip.off {
-          background: #fffbeb;
-          color: #92400e;
-          border-color: #fde68a;
+          background: rgba(251, 191, 36, 0.1);
+          color: #fbbf24;
+          border-color: rgba(251, 191, 36, 0.2);
         }
 
         /* ── Config fields (Embedding / ASR) ── */
@@ -1066,7 +1066,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
-          background: rgba(255, 255, 255, 0.96);
+          background: rgba(22, 27, 34, 0.96);
         }
 
         /* ── Field ── */
@@ -1078,7 +1078,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         .sk-field label {
           font-size: 11px;
           font-weight: 700;
-          color: #475569;
+          color: #8b949e;
           text-transform: uppercase;
           letter-spacing: 0.06em;
           display: flex;
@@ -1090,8 +1090,8 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           font-weight: 700;
           text-transform: none;
           letter-spacing: 0;
-          color: #166534;
-          background: #f0fdf4;
+          color: #4ade80;
+          background: rgba(34, 197, 94, 0.1);
           padding: 1px 6px;
           border-radius: 3px;
         }
@@ -1100,11 +1100,11 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           width: 100%;
           min-height: 42px;
           padding: 10px 12px;
-          border: 1px solid #dbe4f0;
+          border: 1px solid #30363d;
           border-radius: 12px;
           font-size: 13px;
-          background: #f8fbff;
-          color: #0f172a;
+          background: #21262d;
+          color: #e2e8f0;
           outline: none;
           transition: border-color .15s, box-shadow .15s, background .15s;
           font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
@@ -1114,12 +1114,12 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         }
         .sk-input::placeholder {
           font-family: system-ui, -apple-system, sans-serif;
-          color: #94a3b8;
+          color: #8b949e;
         }
         .sk-input:focus {
-          border-color: #60a5fa;
-          background: #fff;
-          box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
+          border-color: #22d3ee;
+          background: #161b22;
+          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.16);
         }
 
         .sk-input-wrap {
@@ -1137,14 +1137,14 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           border: none;
           padding: 6px;
           cursor: pointer;
-          color: #94a3b8;
+          color: #8b949e;
           display: flex;
           border-radius: 8px;
           transition: color .12s, background .12s;
         }
         .sk-eye:hover {
-          color: #0f172a;
-          background: rgba(226, 232, 240, 0.72);
+          color: #e2e8f0;
+          background: rgba(48, 54, 61, 0.72);
         }
 
         /* ── Buttons ── */
@@ -1166,33 +1166,33 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         .sk-btn:active:not(:disabled) { transform: scale(0.98); }
         .sk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .sk-btn-primary {
-          background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-          color: #075985;
-          border: 1px solid #7dd3fc;
-          box-shadow: 0 8px 18px rgba(14, 165, 233, 0.14);
+          background: linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%);
+          color: #22d3ee;
+          border: 1px solid rgba(6, 182, 212, 0.25);
+          box-shadow: 0 8px 18px rgba(6, 182, 212, 0.14);
         }
         .sk-btn-primary:hover:not(:disabled) {
-          background: linear-gradient(180deg, #dbeafe 0%, #bae6fd 100%);
-          box-shadow: 0 10px 20px rgba(14, 165, 233, 0.18);
+          background: linear-gradient(180deg, rgba(6, 182, 212, 0.24) 0%, rgba(6, 182, 212, 0.14) 100%);
+          box-shadow: 0 10px 20px rgba(6, 182, 212, 0.18);
         }
 
         /* ── Note (in scroll flow, NOT pinned to bottom) ── */
         .sk-note {
           font-size: 12px;
-          color: #475569;
+          color: #8b949e;
           padding: 14px 15px;
-          background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
-          border: 1px solid rgba(191, 219, 254, 0.9);
+          background: linear-gradient(180deg, #21262d 0%, rgba(6, 182, 212, 0.08) 100%);
+          border: 1px solid rgba(6, 182, 212, 0.9);
           border-radius: 16px;
           line-height: 1.7;
           display: flex;
           gap: 10px;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          box-shadow: inset 0 1px 0 rgba(22, 27, 34, 0.7);
         }
         .sk-note-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #3b82f6;
+          color: #06b6d4;
         }
         .sk-note p {
           margin: 0 0 4px;
@@ -1217,7 +1217,7 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           }
           .sk-config-aside {
             border-right: none;
-            border-bottom: 1px solid rgba(226, 232, 240, 0.88);
+            border-bottom: 1px solid rgba(48, 54, 61, 0.88);
           }
         }
       `}</style>

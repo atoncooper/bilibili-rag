@@ -181,8 +181,7 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           align-items: center;
           justify-content: center;
           background:
-            radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 32%),
-            rgba(15, 23, 42, 0.34);
+            rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(10px);
           animation: cfFadeIn .15s ease;
         }
@@ -196,10 +195,10 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           max-width: 92vw;
           max-height: 90vh;
           overflow-y: auto;
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          background: linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           border-radius: 20px;
-          box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18);
+          box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
           animation: cfSlideUp .2s ease;
         }
         @keyframes cfSlideUp {
@@ -220,8 +219,8 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           margin-bottom: 8px;
           padding: 4px 10px;
           border-radius: 999px;
-          background: rgba(37, 99, 235, 0.08);
-          color: #1d4ed8;
+          background: rgba(6, 182, 212, 0.08);
+          color: #06b6d4;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -232,22 +231,22 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           font-weight: 700;
           margin: 0;
           letter-spacing: -0.02em;
-          color: #0f172a;
+          color: #e2e8f0;
         }
         .cf-close {
-          background: #fff;
-          border: 1px solid rgba(226, 232, 240, 0.95);
+          background: #161b22;
+          border: 1px solid rgba(48, 54, 61, 0.95);
           cursor: pointer;
-          color: #64748b;
+          color: #8b949e;
           padding: 8px;
           border-radius: 10px;
           display: flex;
           transition: color .12s, background .12s, border-color .12s, transform .12s;
         }
         .cf-close:hover {
-          color: #0f172a;
-          background: #eff6ff;
-          border-color: #bfdbfe;
+          color: #e2e8f0;
+          background: rgba(6, 182, 212, 0.08);
+          border-color: rgba(6, 182, 212, 0.15);
           transform: translateY(-1px);
         }
 
@@ -266,7 +265,7 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
         .cf-field label {
           font-size: 11px;
           font-weight: 700;
-          color: #475569;
+          color: #8b949e;
           text-transform: uppercase;
           letter-spacing: 0.06em;
           display: flex;
@@ -278,8 +277,8 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           font-weight: 700;
           text-transform: none;
           letter-spacing: 0;
-          color: #166534;
-          background: #f0fdf4;
+          color: #4ade80;
+          background: rgba(34, 197, 94, 0.1);
           padding: 1px 6px;
           border-radius: 3px;
         }
@@ -288,23 +287,23 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           width: 100%;
           min-height: 44px;
           padding: 10px 12px;
-          border: 1px solid #dbe4f0;
+          border: 1px solid #30363d;
           border-radius: 12px;
           font-size: 13px;
-          background: #f8fbff;
-          color: #0f172a;
+          background: #21262d;
+          color: #e2e8f0;
           outline: none;
           transition: border-color .15s, box-shadow .15s, background .15s;
           font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
         }
         .cf-input::placeholder {
           font-family: system-ui, -apple-system, sans-serif;
-          color: #94a3b8;
+          color: #8b949e;
         }
         .cf-input:focus {
-          border-color: #60a5fa;
-          background: #fff;
-          box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
+          border-color: #22d3ee;
+          background: #161b22;
+          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.16);
         }
         .cf-select {
           font-family: system-ui, -apple-system, sans-serif;
@@ -326,13 +325,13 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           border: none;
           padding: 6px;
           cursor: pointer;
-          color: #94a3b8;
+          color: #8b949e;
           display: flex;
           border-radius: 8px;
         }
         .cf-eye:hover {
-          color: #0f172a;
-          background: rgba(226, 232, 240, 0.72);
+          color: #e2e8f0;
+          background: rgba(48, 54, 61, 0.72);
         }
 
         .cf-check {
@@ -340,7 +339,7 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          color: #475569;
+          color: #8b949e;
           cursor: pointer;
           padding: 6px 0 2px;
           font-weight: 600;
@@ -348,16 +347,16 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
         .cf-check input {
           width: 16px;
           height: 16px;
-          accent-color: #2563eb;
+          accent-color: #06b6d4;
         }
 
         .cf-error {
           font-size: 12.5px;
-          color: #dc2626;
+          color: #f87171;
           padding: 10px 12px;
-          background: #fef2f2;
+          background: rgba(248, 113, 113, 0.1);
           border-radius: 12px;
-          border: 1px solid #fecaca;
+          border: 1px solid rgba(248, 113, 113, 0.2);
         }
 
         .cf-actions {
@@ -380,23 +379,23 @@ export default function CredentialForm({ credential, onSave, onCancel }: Credent
         .cf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .cf-btn-save {
           flex: 0 0 116px;
-          background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-          color: #075985;
-          border: 1px solid #7dd3fc;
-          box-shadow: 0 8px 18px rgba(14, 165, 233, 0.14);
+          background: linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%);
+          color: #22d3ee;
+          border: 1px solid rgba(6, 182, 212, 0.25);
+          box-shadow: 0 8px 18px rgba(6, 182, 212, 0.14);
         }
         .cf-btn-save:hover:not(:disabled) {
-          background: linear-gradient(180deg, #dbeafe 0%, #bae6fd 100%);
-          box-shadow: 0 10px 20px rgba(14, 165, 233, 0.18);
+          background: linear-gradient(180deg, rgba(6, 182, 212, 0.24) 0%, rgba(6, 182, 212, 0.14) 100%);
+          box-shadow: 0 10px 20px rgba(6, 182, 212, 0.18);
         }
         .cf-btn-cancel {
-          background: #fff;
-          color: #475569;
-          border: 1px solid rgba(226, 232, 240, 0.95);
+          background: #161b22;
+          color: #8b949e;
+          border: 1px solid rgba(48, 54, 61, 0.95);
         }
         .cf-btn-cancel:hover:not(:disabled) {
-          background: #eff6ff;
-          border-color: #bfdbfe;
+          background: rgba(6, 182, 212, 0.08);
+          border-color: rgba(6, 182, 212, 0.15);
         }
       `}</style>
     </div>

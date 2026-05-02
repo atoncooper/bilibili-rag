@@ -5,20 +5,20 @@ import LoginModal from "@/components/LoginModal";
 import DemoFlowModal from "@/components/DemoFlowModal";
 import DockBar from "@/components/DockBar";
 import DockPanelWrapper from "@/components/DockPanelWrapper";
-import ChatPanel from "@/components/ChatPanel";
 import ASRViewerModal from "@/components/ASRViewerModal";
 import { DockContext } from "@/lib/dock-context";
 import { dockModules } from "@/components/dock-modules";
 import { UserInfo, authApi, chatApi, VectorPageStatusResponse, WorkspacePage } from "@/lib/api";
 import { ChatSidebarRenameDialog } from "@/components/chat-sidebar/ChatSidebarRenameDialog";
 import { ChatSidebarDeleteDialog } from "@/components/chat-sidebar/ChatSidebarDeleteDialog";
+import { useAppStore } from "@/stores/app-store";
+import ThreeJSScene from "@/components/three/ThreeJSScene";
 
 export default function Home() {
   const [session, setSession] = useState<string | null>(null);
   const [user, setUser] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
-  const [statsKey, setStatsKey] = useState(0);
   const [selectedFolderIds, setSelectedFolderIds] = useState<number[]>([]);
   const [workspacePages, setWorkspacePages] = useState<WorkspacePage[]>([]);
   const [externalVectorUpdate, setExternalVectorUpdate] = useState<{
@@ -158,7 +158,7 @@ export default function Home() {
   }, []);
 
   const onBuildDone = useCallback(() => {
-    setStatsKey((v) => v + 1);
+    useAppStore.getState().incrementStatsKey();
   }, []);
 
   const onSelectionChange = useCallback((folderIds: number[]) => {
@@ -305,17 +305,7 @@ export default function Home() {
               </div>
             </section>
           ) : (
-            <section className="workspace">
-              <section className="panel panel-chat" style={{ flex: 1, width: "100%" }}>
-                <ChatPanel
-                  statsKey={statsKey}
-                  sessionId={session ?? undefined}
-                  chatSessionId={activeChatSessionId}
-                  folderIds={selectedFolderIds}
-                  workspacePages={workspacePages}
-                />
-              </section>
-            </section>
+            <ThreeJSScene dimmed={!!activePanelId} />
           )}
         </main>
 
@@ -337,6 +327,7 @@ export default function Home() {
             title={activeModule.title}
             originEl={panelOriginEl}
             defaultSize={activeModule.defaultSize}
+            className={activeModule.id === "chat" ? "chat-panel" : undefined}
           >
             <ActivePanel isOpen={!!activePanelId} onClose={closePanel} />
           </DockPanelWrapper>

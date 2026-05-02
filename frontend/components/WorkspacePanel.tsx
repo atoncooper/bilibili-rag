@@ -48,7 +48,7 @@ export default function WorkspacePanel({ workspacePages, onRemove, onClear, onOp
       {workspacePages.length > 1 && (
         <button
           onClick={onClear}
-          className="text-xs text-[var(--muted)] hover:text-[var(--danger)] text-center mt-2 py-1 border border-dashed border-[var(--border)] rounded-lg transition-colors"
+          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--danger)] text-center mt-2 py-1 border border-dashed border-[var(--border)] rounded-lg transition-colors"
         >
           清空全部 ({workspacePages.length})
         </button>

@@ -1,11 +1,19 @@
-import { BarChart3, FolderHeart, MessageSquareText, Settings } from "lucide-react";
+import { BarChart3, FolderHeart, MessageCircle, MessageSquareText, Settings } from "lucide-react";
 import { DockModule } from "@/lib/dock-registry";
+import ChatPanel from "@/components/ChatPanel";
 import FavoritesPanel from "./favorites";
 import ChatHistoryPanel from "./chat-history";
 import SettingsPanel from "./settings";
 import BillingPanel from "./billing";
 
 export const dockModules: DockModule[] = [
+  {
+    id: "chat",
+    icon: MessageCircle,
+    title: "对话",
+    panel: ChatPanel,
+    defaultSize: { width: 1156, height: 640 },
+  },
   {
     id: "chat-history",
     icon: MessageSquareText,

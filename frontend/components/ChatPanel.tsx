@@ -13,25 +13,14 @@ import {
   KnowledgeStats,
   ChatMessage,
   ChatRequestPayload,
-  WorkspacePage,
-  ReasoningStep,
 } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// 前端内部扩展消息类型（支持乐观更新）
-interface LocalChatMessage extends ChatMessage {
-  clientId?: string;
-  reasoningSteps?: ReasoningStep[];
-  hopsUsed?: number;
-  avgRecallScore?: number;
-}
+import { useDockContext } from "@/lib/dock-context";
+import { useAppStore, LocalChatMessage } from "@/stores/app-store";
 
 interface Props {
-  statsKey?: number;
-  sessionId?: string;
-  chatSessionId?: string | null;
-  folderIds?: number[];
-  workspacePages?: WorkspacePage[];
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 // 合并消息：按 id 或 clientId 去重，后端数据优先，按时间正序排列
@@ -57,14 +46,14 @@ function mergeMessages(
   );
 }
 
-export default function ChatPanel({
-  statsKey,
-  sessionId,
-  chatSessionId,
-  folderIds,
-  workspacePages,
-}: Props) {
-  const [messages, setMessages] = useState<LocalChatMessage[]>([]);
+export default function ChatPanel({ isOpen, onClose }: Props) {
+  const { sessionId, workspacePages, activeChatSessionId: chatSessionId } = useDockContext();
+  const statsKey = useAppStore((s) => s.statsKey);
+  const messages = useAppStore((s) => s.chatMessages);
+  const setChatMessages = useAppStore((s) => s.setChatMessages);
+  const clearChatMessages = useAppStore((s) => s.clearChatMessages);
+
+  const [folderIds] = useState<number[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<KnowledgeStats | null>(null);
@@ -89,7 +78,7 @@ export default function ChatPanel({
   // 当 chatSessionId 变化时加载历史消息
   useEffect(() => {
     if (!chatSessionId) {
-      setMessages([]);
+      clearChatMessages();
       return;
     }
 
@@ -97,7 +86,7 @@ export default function ChatPanel({
     chatApi
       .getHistory(chatSessionId)
       .then((history) => {
-        setMessages(history.messages);
+        setChatMessages(history.messages);
         setHasMore(history.has_more);
       })
       .catch((e) => console.error("加载历史失败", e))
@@ -116,7 +105,7 @@ export default function ChatPanel({
     if (chatSessionId) {
       chatApi.clearHistory(chatSessionId).catch(() => {});
     }
-    setMessages([]);
+    clearChatMessages();
   };
 
   const send = async () => {
@@ -153,12 +142,12 @@ export default function ChatPanel({
       created_at: now,
     };
 
-    setMessages((prev) => mergeMessages(prev, [optimisticUser, optimisticAssistant]));
+    setChatMessages((prev) => mergeMessages(prev, [optimisticUser, optimisticAssistant]));
     setLoading(true);
 
     const payload: ChatRequestPayload = {
       question: q,
-      session_id: sessionId,
+      session_id: sessionId ?? undefined,
       chat_session_id: chatSessionId,
       folder_ids: folderIds,
       workspace_pages: workspacePages,
@@ -168,7 +157,7 @@ export default function ChatPanel({
     if (chatMode === "agentic") {
       try {
         const res = await chatApi.askAgentic(payload);
-        setMessages((prev) =>
+        setChatMessages((prev) =>
           prev.map((m) =>
             m.clientId === assistantClientId
               ? {
@@ -184,7 +173,7 @@ export default function ChatPanel({
           )
         );
       } catch (err) {
-        setMessages((prev) =>
+        setChatMessages((prev) =>
           prev.map((m) =>
             m.clientId === assistantClientId
               ? {
@@ -201,7 +190,7 @@ export default function ChatPanel({
       // 刷新历史，用后端正式 id 替换临时消息
       try {
         const history = await chatApi.getHistory(chatSessionId);
-        setMessages((prev) => mergeMessages(prev, history.messages));
+        setChatMessages((prev) => mergeMessages(prev, history.messages));
       } catch (e) {
         console.error("刷新历史失败", e);
       }
@@ -240,7 +229,7 @@ export default function ChatPanel({
             const payload = JSON.parse(dataLine);
             if (payload.type === "chunk") {
               contentBuffer += payload.content || "";
-              setMessages((prev) =>
+              setChatMessages((prev) =>
                 prev.map((m) =>
                   m.clientId === assistantClientId
                     ? { ...m, content: contentBuffer }
@@ -249,13 +238,13 @@ export default function ChatPanel({
               );
             } else if (payload.type === "sources") {
               const sources = Array.isArray(payload.sources) ? payload.sources : [];
-              setMessages((prev) =>
+              setChatMessages((prev) =>
                 prev.map((m) =>
                   m.clientId === assistantClientId ? { ...m, sources } : m
                 )
               );
             } else if (payload.type === "error") {
-              setMessages((prev) =>
+              setChatMessages((prev) =>
                 prev.map((m) =>
                   m.clientId === assistantClientId
                     ? {
@@ -277,7 +266,7 @@ export default function ChatPanel({
       // SSE 失败，尝试降级为非流式
       try {
         const res = await chatApi.ask(payload);
-        setMessages((prev) =>
+        setChatMessages((prev) =>
           prev.map((m) =>
             m.clientId === assistantClientId
               ? {
@@ -290,7 +279,7 @@ export default function ChatPanel({
           )
         );
       } catch (err) {
-        setMessages((prev) =>
+        setChatMessages((prev) =>
           prev.map((m) =>
             m.clientId === assistantClientId
               ? {
@@ -309,11 +298,13 @@ export default function ChatPanel({
     // SSE 结束后刷新历史，用后端正式 id 替换临时消息
     try {
       const history = await chatApi.getHistory(chatSessionId);
-      setMessages((prev) => mergeMessages(prev, history.messages));
+      setChatMessages((prev) => mergeMessages(prev, history.messages));
     } catch (e) {
       console.error("刷新历史失败", e);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="panel-inner">
@@ -350,7 +341,7 @@ export default function ChatPanel({
               <div className="empty-state">
                 <div>
                   <div className="status-pill">检索就绪</div>
-                  <p className="text-sm text-[var(--muted)] mt-3">
+                  <p className="text-sm text-[var(--muted-foreground)] mt-3">
                     把收藏夹变成可提问的知识库
                   </p>
                 </div>
@@ -385,7 +376,7 @@ export default function ChatPanel({
                       {/* Pending 状态 */}
                       {m.role === "assistant" && m.status === "pending" && !m.content ? (
                         <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2" style={{ color: "var(--muted)" }}>
+                          <div className="flex items-center gap-2" style={{ color: "var(--muted-foreground)" }}>
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span className="text-sm">AI 思考中...</span>
                           </div>

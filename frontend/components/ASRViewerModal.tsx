@@ -300,7 +300,7 @@ export default function ASRViewerModal({
                   {content ? (
                     <pre className="whitespace-pre-wrap">{content}</pre>
                   ) : (
-                    <div className="text-[var(--muted)] text-sm">
+                    <div className="text-[var(--muted-foreground)] text-sm">
                       暂无内容
                       <button className="modal-start-btn ml-4" onClick={handleCreate}>
                         开始ASR
@@ -347,7 +347,7 @@ export default function ASRViewerModal({
             </button>
           )}
           {isVecLoading && (
-            <span className="text-sm text-[var(--muted)]" style={{ marginRight: "auto" }}>
+            <span className="text-sm text-[var(--muted-foreground)]" style={{ marginRight: "auto" }}>
               向量化中...
             </span>
           )}

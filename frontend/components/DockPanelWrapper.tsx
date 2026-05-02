@@ -12,6 +12,7 @@ interface DockPanelWrapperProps {
   children: React.ReactNode;
   originEl?: HTMLElement | null;
   defaultSize?: { width: number; height: number };
+  className?: string;
 }
 
 export default function DockPanelWrapper({
@@ -22,6 +23,7 @@ export default function DockPanelWrapper({
   children,
   originEl,
   defaultSize = { width: 380, height: 600 },
+  className,
 }: DockPanelWrapperProps) {
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
 
@@ -67,6 +69,7 @@ export default function DockPanelWrapper({
             onClose={onClose}
             title={title}
             defaultSize={defaultSize}
+            className={className}
           >
             {children}
           </FloatingPanel>

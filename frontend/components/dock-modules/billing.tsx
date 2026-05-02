@@ -52,7 +52,7 @@ function PieChart({ data }: { data: ProviderUsage[] }) {
           `A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`,
           "Z",
         ].join(" ");
-        return <path key={i} d={pathData} fill={s.color} stroke="#fff" strokeWidth="1.5" />;
+        return <path key={i} d={pathData} fill={s.color} stroke="#161b22" strokeWidth="1.5" />;
       })}
     </svg>
   );
@@ -61,8 +61,8 @@ function PieChart({ data }: { data: ProviderUsage[] }) {
 function EmptyChart() {
   return (
     <svg viewBox="0 0 180 180" className="bp-chart">
-      <circle cx="90" cy="90" r="70" fill="none" stroke="var(--border, #e4e4e7)" strokeWidth="1.5" strokeDasharray="6 4" />
-      <text x="90" y="88" textAnchor="middle" fill="var(--fg-muted, #a1a1aa)" fontSize="11" fontFamily="system-ui">暂无数据</text>
+      <circle cx="90" cy="90" r="70" fill="none" stroke="var(--border, #30363d)" strokeWidth="1.5" strokeDasharray="6 4" />
+      <text x="90" y="88" textAnchor="middle" fill="var(--fg-muted, #8b949e)" fontSize="11" fontFamily="system-ui">暂无数据</text>
     </svg>
   );
 }
@@ -313,9 +313,9 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           padding: 22px;
           overflow-y: auto;
           background:
-            radial-gradient(circle at top right, rgba(37, 99, 235, 0.1), transparent 28%),
-            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          color: #0f172a;
+            radial-gradient(circle at top right, rgba(6, 182, 212, 0.1), transparent 28%),
+            linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          color: #e2e8f0;
           font-family: system-ui, -apple-system, sans-serif;
         }
 
@@ -327,9 +327,9 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           gap: 14px;
           padding: 18px;
           border-radius: 18px;
-          border: 1px solid rgba(226, 232, 240, 0.92);
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
-          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+          border: 1px solid rgba(48, 54, 61, 0.92);
+          background: linear-gradient(135deg, rgba(22, 27, 34, 0.98) 0%, rgba(33, 38, 45, 0.94) 100%);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
         }
         .bp-kicker {
           display: inline-flex;
@@ -337,8 +337,8 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           margin-bottom: 8px;
           padding: 4px 10px;
           border-radius: 999px;
-          background: rgba(37, 99, 235, 0.08);
-          color: #1d4ed8;
+          background: rgba(6, 182, 212, 0.08);
+          color: #06b6d4;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -353,7 +353,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         .bp-head p {
           margin: 0;
           max-width: 520px;
-          color: #64748b;
+          color: #8b949e;
           font-size: 12.5px;
         }
         .bp-head-controls {
@@ -366,14 +366,14 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           min-width: 144px;
           padding: 12px 14px;
           border-radius: 14px;
-          background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%);
-          border: 1px solid rgba(147, 197, 253, 0.95);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+          background: linear-gradient(160deg, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0.15) 100%);
+          border: 1px solid rgba(6, 182, 212, 0.95);
+          box-shadow: inset 0 1px 0 rgba(22, 27, 34, 0.65);
         }
         .bp-range-label {
           font-size: 11px;
           font-weight: 700;
-          color: #1e3a8a;
+          color: #22d3ee;
           letter-spacing: 0.05em;
           text-transform: uppercase;
         }
@@ -381,19 +381,19 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           font-size: 12px;
           min-height: 40px;
           padding: 8px 12px;
-          border: 1px solid #bfdbfe;
+          border: 1px solid rgba(6, 182, 212, 0.15);
           border-radius: 10px;
-          background: rgba(255, 255, 255, 0.92);
-          color: #0f172a;
+          background: rgba(22, 27, 34, 0.92);
+          color: #e2e8f0;
           cursor: pointer;
           outline: none;
           font-weight: 600;
           transition: border-color .15s, box-shadow .15s, background .15s;
         }
         .bp-days:focus {
-          border-color: #60a5fa;
-          box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
-          background: #fff;
+          border-color: #22d3ee;
+          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.15);
+          background: #161b22;
         }
 
         /* ── Loading / Empty ── */
@@ -401,12 +401,12 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           text-align: center;
           padding: 36px 24px;
           font-size: 13px;
-          color: #94a3b8;
-          border: 1px dashed #cbd5e1;
+          color: #8b949e;
+          border: 1px dashed #30363d;
           border-radius: 18px;
           background:
-            radial-gradient(circle at top, rgba(59, 130, 246, 0.06), transparent 42%),
-            rgba(255, 255, 255, 0.75);
+            radial-gradient(circle at top, rgba(6, 182, 212, 0.06), transparent 42%),
+            rgba(22, 27, 34, 0.75);
         }
         .bp-empty {
           display: grid;
@@ -414,10 +414,10 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         }
         .bp-empty strong {
           font-size: 14px;
-          color: #334155;
+          color: #cbd5e1;
         }
         .bp-empty span {
-          color: #94a3b8;
+          color: #8b949e;
         }
 
         /* ── Cards ── */
@@ -427,16 +427,16 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           gap: 12px;
         }
         .bp-card {
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           border-radius: 18px;
           padding: 16px;
-          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+          background: linear-gradient(180deg, #161b22 0%, #21262d 100%);
+          box-shadow: 0 14px 32px rgba(0, 0, 0, 0.05);
         }
         .bp-card-kicker {
           font-size: 11px;
           font-weight: 700;
-          color: #2563eb;
+          color: #06b6d4;
           letter-spacing: 0.06em;
           text-transform: uppercase;
           margin-bottom: 12px;
@@ -447,23 +447,23 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           letter-spacing: -0.02em;
           font-variant-numeric: tabular-nums;
           line-height: 1.2;
-          color: #0f172a;
+          color: #e2e8f0;
         }
         .bp-card-label {
           font-size: 12px;
           font-weight: 500;
-          color: #64748b;
+          color: #8b949e;
           margin-top: 6px;
           line-height: 1.55;
         }
 
         /* ── Section ── */
         .bp-section {
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           border-radius: 18px;
           padding: 16px 18px 18px;
-          background: rgba(255, 255, 255, 0.94);
-          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+          background: rgba(22, 27, 34, 0.94);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.05);
         }
         .bp-section-head {
           display: flex;
@@ -477,16 +477,16 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           font-weight: 700;
           margin: 0;
           letter-spacing: -0.02em;
-          color: #0f172a;
+          color: #e2e8f0;
         }
         .bp-section-meta {
           display: inline-flex;
           align-items: center;
           padding: 4px 10px;
           border-radius: 999px;
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
-          color: #1d4ed8;
+          background: rgba(6, 182, 212, 0.08);
+          border: 1px solid rgba(6, 182, 212, 0.15);
+          color: #06b6d4;
           font-size: 11px;
           font-weight: 700;
         }
@@ -502,7 +502,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           width: 152px;
           height: 152px;
           flex-shrink: 0;
-          filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.08));
+          filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.08));
         }
 
         /* ── Legend ── */
@@ -519,8 +519,8 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           font-size: 12.5px;
           padding: 10px 12px;
           border-radius: 12px;
-          background: #f8fafc;
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          background: #21262d;
+          border: 1px solid rgba(48, 54, 61, 0.92);
         }
         .bp-legend-dot {
           width: 11px;
@@ -531,12 +531,12 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         .bp-legend-name {
           flex: 1;
           text-transform: capitalize;
-          color: #334155;
+          color: #cbd5e1;
           font-weight: 600;
         }
         .bp-legend-pct {
           font-weight: 700;
-          color: #0f172a;
+          color: #e2e8f0;
           font-variant-numeric: tabular-nums;
         }
 
@@ -559,7 +559,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         .bp-hist-value {
           font-size: 11px;
           font-weight: 700;
-          color: #334155;
+          color: #e2e8f0;
           font-variant-numeric: tabular-nums;
         }
         .bp-hist-track {
@@ -567,8 +567,8 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           max-width: 72px;
           height: 156px;
           border-radius: 16px;
-          background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          background: linear-gradient(180deg, #21262d 0%, #30363d 100%);
+          border: 1px solid rgba(48, 54, 61, 0.92);
           display: flex;
           align-items: flex-end;
           justify-content: center;
@@ -578,13 +578,13 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           width: 100%;
           border-radius: 10px;
           min-height: 14px;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+          box-shadow: inset 0 1px 0 rgba(22, 27, 34, 0.35);
           transition: height .35s ease;
         }
         .bp-hist-name {
           font-size: 11px;
           font-weight: 600;
-          color: #475569;
+          color: #8b949e;
           text-transform: capitalize;
           text-align: center;
           word-break: break-word;
@@ -594,10 +594,10 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           align-items: center;
           justify-content: center;
           min-height: 180px;
-          border: 1px dashed #cbd5e1;
+          border: 1px dashed #30363d;
           border-radius: 16px;
-          background: rgba(248, 250, 252, 0.82);
-          color: #94a3b8;
+          background: rgba(33, 38, 45, 0.82);
+          color: #8b949e;
           font-size: 12.5px;
           font-weight: 600;
         }
@@ -614,8 +614,8 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           gap: 8px;
           padding: 14px;
           border-radius: 14px;
-          background: #f8fafc;
-          border: 1px solid rgba(226, 232, 240, 0.92);
+          background: #21262d;
+          border: 1px solid rgba(48, 54, 61, 0.92);
         }
         .bp-bar-provider {
           display: flex;
@@ -623,7 +623,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           gap: 8px;
           font-size: 12px;
           font-weight: 700;
-          color: #0f172a;
+          color: #e2e8f0;
         }
         .bp-bar-dot {
           width: 9px;
@@ -637,7 +637,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         }
         .bp-bar-total {
           font-size: 11px;
-          color: #64748b;
+          color: #8b949e;
           font-weight: 600;
         }
 
@@ -649,7 +649,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         }
         .bp-bar-name {
           font-size: 12px;
-          color: #475569;
+          color: #8b949e;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -658,7 +658,7 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         .bp-bar-track {
           flex: 1;
           height: 8px;
-          background: #e2e8f0;
+          background: #30363d;
           border-radius: 999px;
           overflow: hidden;
         }
@@ -667,11 +667,11 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
           border-radius: 999px;
           transition: width .4s ease;
           min-width: 2px;
-          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28) inset;
+          box-shadow: 0 0 0 1px rgba(22, 27, 34, 0.28) inset;
         }
         .bp-bar-val {
           font-size: 11px;
-          color: #64748b;
+          color: #8b949e;
           text-align: right;
           font-weight: 700;
           font-variant-numeric: tabular-nums;
@@ -680,22 +680,22 @@ export default function BillingPanel({ isOpen }: DockPanelProps) {
         /* ── Note ── */
         .bp-note {
           font-size: 12px;
-          color: #475569;
+          color: #8b949e;
           padding: 14px 15px;
-          background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
-          border: 1px solid rgba(191, 219, 254, 0.92);
+          background: linear-gradient(180deg, #21262d 0%, rgba(6, 182, 212, 0.08) 100%);
+          border: 1px solid rgba(6, 182, 212, 0.92);
           border-radius: 16px;
           line-height: 1.7;
           display: flex;
           gap: 10px;
           margin-top: auto;
           flex-shrink: 0;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          box-shadow: inset 0 1px 0 rgba(22, 27, 34, 0.7);
         }
         .bp-note-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #3b82f6;
+          color: #06b6d4;
         }
         .bp-note p { margin: 0; }
 
