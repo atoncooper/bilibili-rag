@@ -1,10 +1,11 @@
-import { BarChart3, FolderHeart, MessageCircle, MessageSquareText, Settings } from "lucide-react";
+import { BarChart3, BookOpen, FolderHeart, MessageCircle, MessageSquareText, Settings } from "lucide-react";
 import { DockModule } from "@/lib/dock-registry";
 import ChatPanel from "@/components/ChatPanel";
 import FavoritesPanel from "./favorites";
 import ChatHistoryPanel from "./chat-history";
 import SettingsPanel from "./settings";
 import BillingPanel from "./billing";
+import QuizPanel from "./quiz";
 
 export const dockModules: DockModule[] = [
   {
@@ -20,6 +21,13 @@ export const dockModules: DockModule[] = [
     title: "历史会话",
     panel: ChatHistoryPanel,
     defaultSize: { width: 640, height: 520 },
+  },
+  {
+    id: "quiz",
+    icon: BookOpen,
+    title: "题目练习",
+    panel: QuizPanel,
+    defaultSize: { width: 720, height: 700 },
   },
   {
     id: "favorites",
