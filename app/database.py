@@ -38,9 +38,10 @@ async def init_db():
 
 
 async def _migrate_add_columns():
-    """为已有表添加 Plan 006 新增的列
+    """自动迁移：为已有表添加新增的列
 
     video_pages 新增: is_vectorized, vectorized_at, vector_chunk_count, vector_error
+    user_settings 新增: asr_api_key_encrypted, asr_base_url, asr_model
     async_tasks 新增: (全新表，无迁移需求)
     """
     migrations = [
@@ -49,6 +50,10 @@ async def _migrate_add_columns():
         ("video_pages", "vectorized_at", "TIMESTAMP"),
         ("video_pages", "vector_chunk_count", "INTEGER DEFAULT 0"),
         ("video_pages", "vector_error", "TEXT"),
+        # Plan 0018: ASR credential columns
+        ("user_settings", "asr_api_key_encrypted", "TEXT"),
+        ("user_settings", "asr_base_url", "TEXT"),
+        ("user_settings", "asr_model", "TEXT"),
     ]
 
     for table, column, col_def in migrations:
