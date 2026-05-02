@@ -5,6 +5,60 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --ink: #1a1a2e;
+  --ink-soft: #4a4a6a;
+  --paper: #f8f9fa;
+  --paper-2: #ffffff;
+  --paper-3: #e9ecef;
+  --accent-strong: #0891b2;
+  --teal: #06b6d4;
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --glow: rgba(6, 182, 212, 0.15);
+  --shadow: rgba(0, 0, 0, 0.08);
+  --radius: 0.625rem;
+  --radius-lg: 20px;
+  /* shadcn/ui theme vars - light */
+  --background: #f8f9fa;
+  --foreground: #1a1a2e;
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a2e;
+  --primary: #0891b2;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ecef;
+  --secondary-foreground: #1a1a2e;
+  --muted: #e9ecef;
+  --muted-foreground: #6b7280;
+  --accent: #0891b2;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #d1d5db;
+  --input: #d1d5db;
+  --ring: #0891b2;
+  --chart-1: #0891b2;
+  --chart-2: #06b6d4;
+  --chart-3: #8b5cf6;
+  --chart-4: #ef4444;
+  --chart-5: #f59e0b;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a2e;
+  --sidebar-primary: #0891b2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9ecef;
+  --sidebar-accent-foreground: #1a1a2e;
+  --sidebar-border: #d1d5db;
+  --sidebar-ring: #0891b2;
+}
+
+/* Dark overrides (default, applied via .dark on html) */
+.dark {
   --ink: #e2e8f0;
   --ink-soft: #cbd5e1;
   --paper: #0d1117;
@@ -13,11 +67,14 @@
   --accent-strong: #06b6d4;
   --teal: #22d3ee;
   --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.1);
   --glow: rgba(6, 182, 212, 0.35);
   --shadow: rgba(0, 0, 0, 0.4);
-  --radius: 0.625rem;
-  --radius-lg: 20px;
-  /* shadcn/ui theme vars - dark tech palette */
+  /* shadcn/ui */
   --background: #0d1117;
   --foreground: #e2e8f0;
   --card: #161b22;
@@ -34,8 +91,8 @@
   --accent-foreground: #0d1117;
   --destructive: #f87171;
   --destructive-foreground: #0d1117;
-  --border: #30363d;
-  --input: #30363d;
+  --border: rgba(48, 54, 61, 0.5);
+  --input: rgba(48, 54, 61, 0.5);
   --ring: #06b6d4;
   --chart-1: #06b6d4;
   --chart-2: #22d3ee;
@@ -1645,41 +1702,6 @@ body {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-.dark {
-  --background: #0d1117;
-  --foreground: #e2e8f0;
-  --card: #161b22;
-  --card-foreground: #e2e8f0;
-  --popover: #161b22;
-  --popover-foreground: #e2e8f0;
-  --primary: #06b6d4;
-  --primary-foreground: #0d1117;
-  --secondary: #21262d;
-  --secondary-foreground: #e2e8f0;
-  --muted: #21262d;
-  --muted-foreground: #8b949e;
-  --accent: #06b6d4;
-  --accent-foreground: #0d1117;
-  --destructive: #f87171;
-  --destructive-foreground: #0d1117;
-  --border: rgba(48, 54, 61, 0.5);
-  --input: rgba(48, 54, 61, 0.5);
-  --ring: #06b6d4;
-  --chart-1: #06b6d4;
-  --chart-2: #22d3ee;
-  --chart-3: #8b5cf6;
-  --chart-4: #f87171;
-  --chart-5: #fbbf24;
-  --sidebar: #161b22;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: #06b6d4;
-  --sidebar-primary-foreground: #0d1117;
-  --sidebar-accent: #21262d;
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: #30363d;
-  --sidebar-ring: #06b6d4;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -1819,11 +1841,10 @@ body {
 
 /* ---------- 浮动面板样式 ---------- */
 .floating-panel {
-  background: rgba(22, 27, 34, 0.92);
+  background: #0d1117;
   border: 1px solid rgba(6, 182, 212, 0.3);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 45px rgba(6, 182, 212, 0.08), 0 4px 12px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(14px);
   overflow: hidden;
 }
 
@@ -1848,7 +1869,7 @@ body {
   height: 28px;
   border-radius: 50%;
   border: 1px solid rgba(6, 182, 212, 0.2);
-  background: rgba(22, 27, 34, 0.7);
+  background: #161b22;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2036,7 +2057,7 @@ body {
   position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 15px;
 }
 
 .dock-icon {
@@ -2109,7 +2130,7 @@ body {
 
 /* Chat 面板内 header 匹配暗色主题 */
 .floating-panel.chat-panel .floating-panel-header {
-  background: rgba(22, 27, 34, 0.8);
+  background: #161b22;
   border-bottom-color: var(--border);
 }
 
@@ -2144,4 +2165,252 @@ body {
   z-index: 2;
   pointer-events: auto;
   transition: opacity 0.4s ease;
+}
+
+/* ============================================ */
+/* Light Mode Overrides for hardcoded dark areas */
+/* ============================================ */
+html:not(.dark) body {
+  background-color: var(--paper);
+}
+html:not(.dark) .app-topbar {
+  background: rgba(248, 249, 250, 0.9);
+}
+html:not(.dark) .sidebar-shell {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+}
+html:not(.dark) .sidebar-header-title {
+  color: var(--foreground);
+}
+html:not(.dark) .sidebar-item {
+  color: var(--foreground);
+}
+html:not(.dark) .sidebar-item:hover {
+  background: rgba(8, 145, 178, 0.06);
+}
+html:not(.dark) .sidebar-item[aria-pressed="true"] {
+  background: rgba(8, 145, 178, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(8, 145, 178, 0.2);
+}
+html:not(.dark) .sidebar-item-active-bar {
+  background: var(--accent);
+}
+html:not(.dark) .sidebar-item-icon {
+  border-color: var(--border);
+  background: var(--secondary);
+  color: var(--accent);
+}
+html:not(.dark) .sidebar-item[aria-pressed="true"] .sidebar-item-icon {
+  background: var(--accent);
+  color: var(--primary-foreground);
+}
+html:not(.dark) .sidebar-item-title {
+  color: var(--foreground);
+}
+html:not(.dark) .sidebar-item-time {
+  color: var(--muted-foreground);
+}
+html:not(.dark) .sidebar-action-btn {
+  color: var(--muted-foreground);
+}
+html:not(.dark) .sidebar-action-btn:hover {
+  color: var(--accent);
+  background: rgba(8, 145, 178, 0.1);
+}
+html:not(.dark) .sidebar-empty-icon {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--accent);
+}
+html:not(.dark) .sidebar-empty-title,
+html:not(.dark) .sidebar-empty-hint {
+  color: var(--muted-foreground);
+}
+html:not(.dark) .dock-backdrop {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+html:not(.dark) .dock-icon {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--muted-foreground);
+}
+html:not(.dark) .dock-icon:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .dock-icon.active {
+  background: rgba(8, 145, 178, 0.1);
+  color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2);
+}
+html:not(.dark) .panel {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .floating-panel {
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .floating-panel-header {
+  background: rgba(8, 145, 178, 0.04);
+  border-bottom-color: var(--border);
+}
+html:not(.dark) .floating-panel-title {
+  color: var(--foreground);
+}
+html:not(.dark) .floating-panel.chat-panel {
+  background: var(--card);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .floating-panel.chat-panel .floating-panel-header {
+  background: var(--card);
+}
+html:not(.dark) .sidebar-dialog-card {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.1) !important;
+}
+html:not(.dark) .sidebar-dialog-card-title {
+  color: var(--foreground) !important;
+}
+html:not(.dark) .sidebar-dialog-card-desc {
+  color: var(--muted-foreground) !important;
+}
+html:not(.dark) .sidebar-dialog-input {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+html:not(.dark) .sidebar-dialog-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
+}
+html:not(.dark) .sidebar-dialog-btn-cancel {
+  border-color: var(--border);
+  color: var(--accent);
+}
+html:not(.dark) .sidebar-dialog-btn-confirm {
+  background: var(--accent);
+  color: var(--primary-foreground);
+}
+html:not(.dark) .folder-card {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .folder-card:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--border);
+}
+html:not(.dark) .folder-card.selected {
+  background: rgba(8, 145, 178, 0.04);
+  border-color: rgba(8, 145, 178, 0.2);
+  box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.06);
+}
+html:not(.dark) .folder-toggle {
+  background: rgba(0, 0, 0, 0.03);
+}
+html:not(.dark) .workspace-item {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .prompt-chip {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .prompt-chip:hover {
+  box-shadow: 0 10px 20px rgba(8, 145, 178, 0.06);
+}
+html:not(.dark) .app-footer {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .user-chip {
+  background: rgba(0, 0, 0, 0.04);
+}
+html:not(.dark) .message.assistant .message-bubble {
+  background: var(--card);
+}
+html:not(.dark) .markdown code {
+  background: rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .markdown pre {
+  background: rgba(0, 0, 0, 0.03);
+}
+html:not(.dark) .markdown blockquote {
+  border-left-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ── Light Mode: components missing overrides ── */
+html:not(.dark) .video-item {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .video-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+html:not(.dark) .page-row {
+  background: rgba(0, 0, 0, 0.02);
+}
+html:not(.dark) .page-row:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+html:not(.dark) .page-action-btn {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+html:not(.dark) .input {
+  background: var(--card);
+  color: var(--foreground);
+}
+html:not(.dark) .btn-ghost {
+  background: var(--card);
+}
+html:not(.dark) .btn-icon {
+  background: var(--card);
+}
+html:not(.dark) .modal-card {
+  background: var(--card);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.1);
+}
+html:not(.dark) .demo-answer {
+  background: var(--card);
+}
+html:not(.dark) .organize-item {
+  background: var(--card);
+}
+html:not(.dark) .organize-select select {
+  background: var(--card);
+  color: var(--foreground);
+}
+html:not(.dark) .hero-card {
+  background: var(--card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+html:not(.dark) .hero-card:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+html:not(.dark) .source-list {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .progress {
+  background: rgba(0, 0, 0, 0.06);
+}
+html:not(.dark) .status-pill.empty {
+  background: rgba(0, 0, 0, 0.04);
+}
+html:not(.dark) .floating-panel-close {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--accent);
+}
+html:not(.dark) .floating-panel-close:hover {
+  color: var(--accent-strong);
+  background: rgba(8, 145, 178, 0.08);
+}
+html:not(.dark) .floating-panel .chat-panel {
+  background: var(--card);
+}
+html:not(.dark) .three-scene-container {
+  background: #1a1a1a;
 }
