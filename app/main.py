@@ -32,6 +32,7 @@ from app.routers.asr import router as asr_router
 from app.routers.vector_page import router as vector_page_router
 from app.routers.credentials import router as credentials_router
 from app.routers.billing import router as billing_router
+from app.routers.quiz import router as quiz_router
 
 
 # 配置日志
@@ -217,6 +218,7 @@ app.include_router(asr_router)
 app.include_router(vector_page_router)
 app.include_router(credentials_router)
 app.include_router(billing_router)
+app.include_router(quiz_router)
 
 
 @app.get("/")

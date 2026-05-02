@@ -54,6 +54,9 @@ async def _migrate_add_columns():
         ("user_settings", "asr_api_key_encrypted", "TEXT"),
         ("user_settings", "asr_base_url", "TEXT"),
         ("user_settings", "asr_model", "TEXT"),
+        # Plan 0012: Quiz pages mode columns
+        ("quiz_sets", "source_type", "VARCHAR(20) DEFAULT 'folder'"),
+        ("quiz_sets", "source_pages", "TEXT"),
     ]
 
     for table, column, col_def in migrations:

@@ -12,7 +12,7 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, get_db_context
-from app.models import FavoriteFolder, FavoriteVideo, VideoCache, UserSession, ContentSource, VideoContent, VideoPageInfo, VideoPagesResponse
+from app.models import FavoriteFolder, FavoriteVideo, VideoCache, UserSession, ContentSource, VideoContent, VideoPageInfo, VideoPagesResponse, VideoPage
 from app.services.bilibili import BilibiliService
 from app.services.content_fetcher import ContentFetcher
 from app.services.asr import ASRService
@@ -515,6 +515,88 @@ async def get_folder_status(
             )
         )
     return result
+
+
+class VectorizedPageItem(BaseModel):
+    """向量化分P项"""
+    bvid: str
+    cid: int
+    page_index: int
+    page_title: Optional[str] = None
+    video_title: Optional[str] = None
+    vector_chunk_count: int = 0
+    vectorized_at: Optional[datetime] = None
+
+
+@router.get("/pages/vectorized", response_model=List[VectorizedPageItem])
+async def get_vectorized_pages(
+    session_id: str = Query(..., description="会话ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取已向量化的分P列表（跨 Session 查找同一用户的数据）"""
+    # 1. 跨 Session 查找
+    result = await db.execute(
+        select(UserSession.bili_mid).where(UserSession.session_id == session_id)
+    )
+    mid = result.scalar()
+    target_session_ids = [session_id]
+    if mid:
+        result = await db.execute(
+            select(UserSession.session_id).where(UserSession.bili_mid == mid)
+        )
+        target_session_ids = [row[0] for row in result.fetchall()]
+
+    # 2. 获取这些 session 的所有收藏夹
+    result = await db.execute(
+        select(FavoriteFolder.id, FavoriteFolder.media_id)
+        .where(FavoriteFolder.session_id.in_(target_session_ids))
+    )
+    folder_rows = result.fetchall()
+    if not folder_rows:
+        return []
+
+    folder_ids = [row[0] for row in folder_rows]
+
+    # 3. 获取收藏夹中的所有 bvid
+    result = await db.execute(
+        select(FavoriteVideo.bvid)
+        .where(FavoriteVideo.folder_id.in_(folder_ids))
+    )
+    bvids = list(set(row[0] for row in result.fetchall()))
+    if not bvids:
+        return []
+
+    # 4. 获取已向量化的分P
+    result = await db.execute(
+        select(VideoPage)
+        .where(
+            VideoPage.bvid.in_(bvids),
+            VideoPage.is_vectorized == "done",
+        )
+        .order_by(VideoPage.bvid, VideoPage.page_index)
+    )
+    pages = result.scalars().all()
+
+    # 5. 获取视频标题（从 VideoCache）
+    bvid_set = {p.bvid for p in pages}
+    result = await db.execute(
+        select(VideoCache.bvid, VideoCache.title)
+        .where(VideoCache.bvid.in_(bvid_set))
+    )
+    title_map = {row[0]: row[1] for row in result.fetchall()}
+
+    return [
+        VectorizedPageItem(
+            bvid=p.bvid,
+            cid=p.cid,
+            page_index=p.page_index,
+            page_title=p.page_title,
+            video_title=title_map.get(p.bvid, ""),
+            vector_chunk_count=p.vector_chunk_count or 0,
+            vectorized_at=p.vectorized_at,
+        )
+        for p in pages
+    ]
 
 
 @router.post("/folders/sync", response_model=List[SyncResult])

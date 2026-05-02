@@ -3,7 +3,7 @@ Bilibili RAG 知识库系统
 
 数据模型定义
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, Float, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -580,6 +580,103 @@ class CredentialUsage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+# ==================== SQLAlchemy 模型 (Quiz 题目训练系统) ====================
+
+class QuizSet(Base):
+    """题目集"""
+    __tablename__ = 'quiz_sets'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quiz_uuid = Column(String(64), unique=True, index=True, nullable=False)
+    session_id = Column(String(64), index=True, nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    question_count = Column(Integer, default=10)
+    type_distribution = Column(JSON, nullable=True)  # {"single_choice": 3, "multi_choice": 2, ...}
+    difficulty = Column(String(20), default='medium')  # easy / medium / hard
+    folder_ids = Column(JSON, nullable=True)  # [1, 2, 3]
+    source_type = Column(String(20), default="folder")  # "folder" / "pages"
+    source_pages = Column(JSON, nullable=True)  # [{"bvid":"BVxxx","cid":123,"page_index":0,"page_title":"P1"}]
+    bvid_count = Column(Integer, default=0)
+    status = Column(String(20), default='generating')  # generating / done / failed
+    error_message = Column(Text, nullable=True)
+    total_score = Column(Integer, default=100)
+    passing_score = Column(Integer, default=60)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class QuizQuestion(Base):
+    """题目明细"""
+    __tablename__ = 'quiz_questions'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quiz_uuid = Column(String(64), index=True, nullable=False)
+    question_uuid = Column(String(64), unique=True, index=True, nullable=False)
+    bvid = Column(String(20), nullable=True)
+    chunk_id = Column(String(20), nullable=True)
+    source_segment = Column(Text, nullable=True)
+    question_type = Column(String(20), nullable=False)  # single_choice / multi_choice / short_answer / essay
+    difficulty = Column(String(20), default='medium')
+    question_text = Column(Text, nullable=False)
+    options = Column(JSON, nullable=True)  # ["A. 选项1", "B. 选项2", ...]
+    correct_answer = Column(JSON, nullable=False)  # "A" or ["A", "C"] or "答案文本"
+    explanation = Column(Text, nullable=True)
+    keywords = Column(JSON, nullable=True)  # ["关键词1", "关键词2"]
+    answer_template = Column(Text, nullable=True)
+    scoring_rubric = Column(JSON, nullable=True)  # [{"step": "...", "points": 2, "keywords": [...]}]
+    model_answer = Column(Text, nullable=True)
+    metadata_extra = Column(JSON, nullable=True)  # 避免与 SQLAlchemy MetaData 冲突
+    is_valid = Column(Boolean, default=True)
+    invalid_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class QuizSubmission(Base):
+    """提交记录"""
+    __tablename__ = 'quiz_submissions'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    submission_uuid = Column(String(64), unique=True, index=True, nullable=False)
+    quiz_uuid = Column(String(64), index=True, nullable=False)
+    session_id = Column(String(64), index=True, nullable=False)
+    total_score = Column(Integer, nullable=True)
+    auto_score = Column(Integer, nullable=True)
+    manual_score = Column(Integer, nullable=True)
+    passing_score = Column(Integer, nullable=True)
+    is_complete = Column(Boolean, default=False)
+    is_passed = Column(Boolean, nullable=True)
+    correct_count = Column(Integer, default=0)
+    total_question_count = Column(Integer, default=0)
+    time_spent_seconds = Column(Integer, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    graded_at = Column(DateTime, nullable=True)
+
+
+class QuizAnswer(Base):
+    """答案明细"""
+    __tablename__ = 'quiz_answers'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    submission_uuid = Column(String(64), index=True, nullable=False)
+    question_uuid = Column(String(64), index=True, nullable=False)
+    question_type = Column(String(20), nullable=False)
+    user_answer = Column(JSON, nullable=False)  # "A" or ["A", "C"] or "文本答案"
+    user_answer_text = Column(Text, nullable=True)
+    is_correct = Column(Boolean, nullable=True)
+    auto_score = Column(Integer, nullable=True)
+    manual_score = Column(Integer, nullable=True)
+    final_score = Column(Integer, nullable=True)
+    correct_answer_snapshot = Column(JSON, nullable=False)  # 批改时的正确答案快照
+    matched_keywords = Column(JSON, nullable=True)
+    keyword_match_rate = Column(Float, nullable=True)
+    grading_detail = Column(JSON, nullable=True)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    graded_at = Column(DateTime, nullable=True)
+
+
 # ==================== Pydantic 模型 (多 Provider Credential) ====================
 
 class CredentialCreate(BaseModel):
@@ -641,3 +738,127 @@ class UsageSummary(BaseModel):
     total_api_calls: int
     by_provider: list[ProviderUsage]     # 饼图数据
     by_credential: list[CredentialUsageItem]  # 树状图数据
+
+
+# ==================== Pydantic 模型 (Quiz 题目训练系统) ====================
+
+class QuestionType(str, Enum):
+    """题型枚举"""
+    SINGLE_CHOICE = "single_choice"
+    MULTI_CHOICE = "multi_choice"
+    SHORT_ANSWER = "short_answer"
+    ESSAY = "essay"
+
+
+class QuizGenerateRequest(BaseModel):
+    """POST /quiz/generate 请求"""
+    folder_ids: Optional[list[int]] = None
+    pages: Optional[list[dict]] = None  # [{"bvid":"BVxxx","cid":123,"page_index":0,"page_title":"P1"}]
+    question_count: int = 10
+    type_distribution: Optional[dict[str, int]] = None
+    difficulty: str = "medium"  # easy / medium / hard
+    title: Optional[str] = None
+
+
+class QuizGenerateResponse(BaseModel):
+    """POST /quiz/generate 响应"""
+    quiz_uuid: str
+    question_count: int
+    estimated_cost_tokens: int
+
+
+class QuizQuestionResponse(BaseModel):
+    """题目响应（不含答案）"""
+    question_uuid: str
+    question_type: str
+    difficulty: str
+    question_text: str
+    options: Optional[list[str]] = None
+
+
+class QuizSetResponse(BaseModel):
+    """GET /quiz/{quiz_uuid} 响应"""
+    quiz_uuid: str
+    title: str
+    status: str
+    question_count: int
+    type_distribution: Optional[dict] = None
+    difficulty: str
+    total_score: int
+    passing_score: int
+    created_at: datetime
+    questions: list[QuizQuestionResponse] = []
+
+
+class QuizAnswerItem(BaseModel):
+    """提交答案项"""
+    question_uuid: str
+    answer: str | list[str]
+
+
+class QuizSubmissionRequest(BaseModel):
+    """POST /quiz/submit 请求"""
+    quiz_uuid: str
+    answers: list[QuizAnswerItem]
+    time_spent_seconds: Optional[int] = None
+
+
+class QuizAnswerResult(BaseModel):
+    """单题批改结果"""
+    question_uuid: str
+    is_correct: Optional[bool] = None
+    auto_score: Optional[int] = None
+    correct_answer: str | list[str]
+    grading_note: Optional[str] = None
+
+
+class QuizSubmissionResponse(BaseModel):
+    """POST /quiz/submit 响应"""
+    submission_uuid: str
+    score: Optional[int] = None
+    passed: Optional[bool] = None
+    correct_count: int
+    total_count: int
+    results: list[QuizAnswerResult]
+
+
+class QuizHistoryItem(BaseModel):
+    """答题历史项"""
+    submission_uuid: str
+    quiz_uuid: str
+    title: str
+    score: Optional[int] = None
+    passed: Optional[bool] = None
+    correct_count: int
+    total_question_count: int
+    time_spent_seconds: Optional[int] = None
+    submitted_at: str
+
+
+class QuizHistoryResponse(BaseModel):
+    """答题历史响应"""
+    submissions: list[QuizHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+
+
+class WrongAnswerItem(BaseModel):
+    """错题项"""
+    question_uuid: str
+    quiz_uuid: str
+    question_type: str
+    question_text: str
+    options: Optional[list[str]] = None
+    user_answer: str | list[str]
+    correct_answer: str | list[str]
+    explanation: Optional[str] = None
+    times_wrong: int
+    last_attempt_at: str
+
+
+class WrongAnswerResponse(BaseModel):
+    """错题响应"""
+    wrong_answers: list[WrongAnswerItem]
+    total: int
