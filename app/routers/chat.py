@@ -13,7 +13,9 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.outputs import LLMResult
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 
@@ -50,34 +52,149 @@ from app.services.rag.prompts import (
 router = APIRouter(prefix="/chat", tags=["对话"])
 
 
+def _extract_usage_from_message(msg) -> tuple[int, int, int]:
+    """从 AI 消息中提取 token 用量，兼容流式/非流式两种路径。返回 (prompt, completion, total)。"""
+    um = getattr(msg, "usage_metadata", None) or {}
+    if um:
+        p = um.get("input_tokens", 0)
+        c = um.get("output_tokens", 0)
+        t = um.get("total_tokens", p + c)
+        if t > 0:
+            return p, c, t
+    tu = (getattr(msg, "response_metadata", None) or {}).get("token_usage") or {}
+    if tu:
+        p = tu.get("prompt_tokens", 0)
+        c = tu.get("completion_tokens", 0)
+        t = tu.get("total_tokens", p + c)
+        if t > 0:
+            return p, c, t
+    return 0, 0, 0
+
+
+class _StreamTokenCapture(BaseCallbackHandler):
+    """流式 LLM 调用的 token 累计回调 — on_llm_end 在流结束后自动触发，携带聚合后的用量。"""
+
+    def __init__(self):
+        self.total_tokens = 0
+
+    def on_llm_end(self, response: LLMResult, **kwargs) -> None:
+        try:
+            _, _, total = _extract_token_usage_from_llmresult(response)
+            self.total_tokens = total
+        except Exception:
+            pass
+
+
+def _extract_token_usage_from_llmresult(response: LLMResult) -> tuple[int, int, int]:
+    """从 LLMResult 中提取 token 用量，兼容流式/非流式两种路径。"""
+    # 路径 1: 非流式 — llm_output["token_usage"]
+    if response.llm_output:
+        tu = response.llm_output.get("token_usage")
+        if tu and isinstance(tu, dict):
+            p = tu.get("prompt_tokens", 0)
+            c = tu.get("completion_tokens", 0)
+            t = tu.get("total_tokens", p + c)
+            if t > 0:
+                return p, c, t
+    # 路径 2: 流式 — generations[0][0].message.usage_metadata
+    try:
+        msg = response.generations[0][0].message
+        um = getattr(msg, "usage_metadata", None) or {}
+        p = um.get("input_tokens", 0)
+        c = um.get("output_tokens", 0)
+        t = um.get("total_tokens", p + c)
+        if t > 0:
+            return p, c, t
+    except (IndexError, AttributeError, TypeError):
+        pass
+    return 0, 0, 0
+
+
+def _track_usage_after_llm(http_request, session_id, credential_id, provider, model, msg) -> None:
+    """从 LLM 响应中提取 token 用量并写入 credential_usage 表（fire-and-forget）。"""
+    import asyncio as _asyncio
+    prompt, completion, total = _extract_usage_from_message(msg)
+    if total <= 0:
+        logger.warning(
+            f"[USAGE] no token usage found in response "
+            f"(session={str(session_id)[:8]}... provider={provider} model={model})"
+        )
+        return
+
+    writer = getattr(http_request.app.state, "usage_writer", None)
+    if not writer:
+        logger.warning("[USAGE] no usage_writer available, skipping")
+        return
+
+    logger.info(
+        f"[USAGE] recording: session={str(session_id)[:8]}... cred_id={credential_id} "
+        f"provider={provider} model={model} "
+        f"prompt={prompt} completion={completion} total={total}"
+    )
+    _asyncio.ensure_future(writer.enqueue(
+        session_id=session_id,
+        credential_id=credential_id,
+        provider=provider,
+        model=model,
+        prompt_tokens=prompt,
+        completion_tokens=completion,
+        total_tokens=total,
+        api_calls=1,
+    ))
+
+
 def _get_llm(session_id: Optional[str] = None) -> ChatOpenAI:
-    """获取 LangChain LLM 实例（优先使用用户自定义 Key，否则回退系统默认）。"""
+    """
+    获取 LangChain LLM 实例（优先使用用户默认 Credential，否则回退系统默认）。
+
+    通过 ApiKeyManager 同步读取缓存获取用户默认 credential。
+    缓存未命中时使用系统默认 Key（会产生费用）。
+    """
     api_key = settings.openai_api_key
     base_url = settings.openai_base_url
     model = settings.llm_model
+    credential_id: Optional[int] = None  # None = 系统默认
 
-    # 尝试获取用户自定义配置（仅从缓存读取，不查数据库）
     if session_id:
         from app.main import app
         manager = getattr(app.state, "api_key_manager", None)
         if manager and manager.is_enabled:
-            user_creds = manager.get_llm_key_sync(session_id)
+            user_creds = manager.get_default_credential_sync(session_id)
             if user_creds and user_creds.api_key:
                 api_key = user_creds.api_key
                 if user_creds.base_url:
                     base_url = user_creds.base_url
                 if user_creds.model:
                     model = user_creds.model
+                credential_id = getattr(user_creds, "credential_id", None)
 
     if not api_key:
         raise HTTPException(status_code=400, detail="未配置 LLM API Key")
 
-    return ChatOpenAI(
+    llm = ChatOpenAI(
         api_key=api_key,
         base_url=base_url,
         model=model,
         temperature=0.5,
     )
+    # 附加 credential_id 供用量追踪使用（存储在自定义属性上）
+    setattr(llm, "_credential_id", credential_id)
+    setattr(llm, "_provider", _infer_provider(base_url))
+    return llm
+
+
+def _infer_provider(base_url: Optional[str]) -> str:
+    """根据 base_url 推断 provider 名称"""
+    if not base_url:
+        return "openai"
+    url = base_url.lower()
+    if "anthropic" in url:
+        return "anthropic"
+    if "deepseek" in url:
+        return "deepseek"
+    if "openai" in url:
+        return "openai"
+    return "custom"
 
 def _build_overview_messages(context: str, question: str) -> list:
     system = overview_system_prompt(context)
@@ -667,26 +784,40 @@ async def ask_question(request: ChatRequest, http_request: Request, db: AsyncSes
         logger.info(f"[QUERY_REWRITE] rewrites={[(r.type.value, r.query[:50], r.confidence) for r in rewrite_result.rewrites]}")
         logger.info(f"[QUERY_REWRITE] suggested_route={rewrite_result.suggested_route}, needs_rewrite={rewrite_result.needs_rewrite}")
 
-        # 预加载用户 API Key 缓存（确保 _get_llm 能命中）
+        # 预加载用户 Credential 缓存（确保 _get_llm 能命中）
         if request.session_id:
             manager = getattr(http_request.app.state, "api_key_manager", None)
             if manager and manager.is_enabled:
-                await manager.preload_cache(request.session_id, db)
+                await manager.preload_credentials(request.session_id, db)
 
         messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
         llm = _get_llm(request.session_id)
+
+        cred_id = getattr(llm, "_credential_id", None)
+        provider = getattr(llm, "_provider", "openai")
+        model = getattr(llm, "model_name", None)
+
         start_time = time.time()
         response = await llm.ainvoke(messages)
-        latency_ms = int((time.time() - start_time) * 1000)
 
+        latency_ms = int((time.time() - start_time) * 1000)
         answer = response.content or ""
 
-        # 5. 完成 assistant 消息
+        # 提取 token 用量（同步写入 chat_messages）
+        _, _, total_tokens = _extract_usage_from_message(response)
+
+        # 用量追踪写入 credential_usage 表
+        _track_usage_after_llm(
+            http_request, request.session_id, cred_id, provider, model, response
+        )
+
+        # 5. 完成 assistant 消息（token 同步写入 chat_messages）
         await chat_history_service.complete_assistant_message(
             db,
             message_id=assistant_msg.id,
             content=answer,
             sources=sources[:5],
+            tokens_used=total_tokens or None,
             latency_ms=latency_ms,
         )
 
@@ -749,14 +880,32 @@ async def ask_question_agentic(request: ChatRequest, http_request: Request, db: 
         )
         latency_ms = int((time.time() - start_time) * 1000)
 
-        # 5. 完成 assistant 消息
+        # 5. 完成 assistant 消息（token 同步写入 chat_messages）
+        total_tokens = result.total_tokens or 0
         await chat_history_service.complete_assistant_message(
             db,
             message_id=assistant_msg.id,
             content=result.answer,
             sources=result.sources,
+            tokens_used=total_tokens or None,
             latency_ms=latency_ms,
         )
+
+        # 用量追踪写入 credential_usage 表
+        if total_tokens > 0:
+            writer = getattr(http_request.app.state, "usage_writer", None)
+            if writer:
+                import asyncio as _asyncio
+                _asyncio.ensure_future(writer.enqueue(
+                    session_id=request.session_id,
+                    credential_id=None,
+                    provider="openai",
+                    model=settings.llm_model,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    total_tokens=total_tokens,
+                    api_calls=1,
+                ))
 
         return AgenticChatResponse(
             answer=result.answer,
@@ -805,11 +954,11 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
     # 4. 更新会话时间
     await chat_history_service.touch_chat_session(db, chat_session_id)
 
-    # 5. 预加载用户 API Key 缓存（确保 _get_llm 能命中）
+    # 5. 预加载用户 Credential 缓存（确保 _get_llm 能命中）
     if request.session_id:
         manager = getattr(http_request.app.state, "api_key_manager", None)
         if manager and manager.is_enabled:
-            await manager.preload_cache(request.session_id, db)
+            await manager.preload_credentials(request.session_id, db)
 
     try:
         # === Query 改写 ===
@@ -821,6 +970,14 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
 
         messages, sources, _, _ = await _prepare_messages(request, db, rewrite_result)
         llm = _get_llm(request.session_id)
+
+        cred_id = getattr(llm, "_credential_id", None)
+        provider = getattr(llm, "_provider", "openai")
+        model = getattr(llm, "model_name", None)
+
+        # 流式 token 追踪：通过回调捕获（on_llm_end 在流结束后自动触发，携带聚合后的 token 用量）
+        token_capture = _StreamTokenCapture()
+        llm.callbacks = (llm.callbacks or []) + [token_capture]
 
         # 获取 rewrite 信息用于附加到 sources
         rewrite = rewrite_result.rewrites[0] if rewrite_result.rewrites else None
@@ -835,13 +992,32 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
         async def generate():
             """标准 SSE 流式生成器（data: 前缀 + event type），完成后写历史"""
             full_content = ""
+            last_chunk = None
             start_time = time.time()
             try:
                 async for chunk in llm.astream(messages):
+                    last_chunk = chunk
                     chunk_text = chunk.content or ""
                     full_content += chunk_text
                     data = json.dumps({"type": "chunk", "content": chunk_text}, ensure_ascii=False)
                     yield f"data: {data}\n\n"
+
+                # 用量追踪写入 credential_usage 表
+                total_tokens = token_capture.total_tokens
+                if total_tokens > 0:
+                    # 流式回调已经捕获了完整 token 用量，直接入队
+                    writer = getattr(http_request.app.state, "usage_writer", None)
+                    if writer:
+                        asyncio.ensure_future(writer.enqueue(
+                            session_id=request.session_id,
+                            credential_id=cred_id,
+                            provider=provider,
+                            model=model,
+                            prompt_tokens=0,
+                            completion_tokens=0,
+                            total_tokens=total_tokens,
+                            api_calls=1,
+                        ))
 
                 # 附加 sources 和 rewrite 信息
                 sources_payload = json.dumps({
@@ -855,13 +1031,14 @@ async def ask_question_stream(request: ChatRequest, http_request: Request, db: A
                 done_payload = json.dumps({"type": "done"}, ensure_ascii=False)
                 yield f"data: {done_payload}\n\n"
 
-                # 5. SSE 完成后更新 assistant 消息
+                # 5. SSE 完成后更新 assistant 消息（token 同步写入 chat_messages）
                 latency_ms = int((time.time() - start_time) * 1000)
                 await chat_history_service.complete_assistant_message(
                     db,
                     message_id=assistant_msg.id,
                     content=full_content,
                     sources=sources,
+                    tokens_used=total_tokens or None,
                     latency_ms=latency_ms,
                 )
             except Exception as e:
