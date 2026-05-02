@@ -1,49 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Pencil, Trash2, Star, ShieldCheck } from "lucide-react";
 import { useDockContext } from "@/lib/dock-context";
-import { settingsApi, type CredentialsStatus } from "@/lib/api";
+import { credentialsApi, settingsApi, type CredentialItem, type CredentialCreateParams, type CredentialUpdateParams, type CredentialsStatus } from "@/lib/api";
 import type { DockPanelProps } from "@/lib/dock-registry";
+import CredentialForm from "./credential-form";
 
 /* ──── Inline SVG Icons ──── */
 
-function LLMIcon() {
+function KeyIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
-      <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
-      <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
-      <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
-      <line x1="10" y1="6.5" x2="14" y2="6.5" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="10" y1="17.5" x2="14" y2="17.5" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="6.5" y1="10" x2="6.5" y2="14" stroke="currentColor" strokeWidth="1.2"/>
-      <line x1="17.5" y1="10" x2="17.5" y2="14" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="6.5" cy="6.5" r="1.5" fill="currentColor" stroke="currentColor" strokeWidth=".5" fillOpacity=".6"/>
-      <circle cx="17.5" cy="17.5" r="1.8" fill="currentColor" stroke="currentColor" strokeWidth=".5" fillOpacity=".9"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="8" cy="12" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
+      <path d="M12.5 12.5L20 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M17 15l3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   );
 }
 
-function EmbeddingIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="5" y="2" width="14" height="16" rx="1.8" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".06"/>
-      <rect x="3" y="5" width="14" height="16" rx="1.8" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity=".03" strokeOpacity=".3"/>
-      <circle cx="9" cy="7" r=".8" fill="currentColor" fillOpacity=".5"/>
-      <circle cx="12" cy="7" r=".8" fill="currentColor" fillOpacity=".3"/>
-      <circle cx="15" cy="7" r=".8" fill="currentColor" fillOpacity=".7"/>
-      <circle cx="9" cy="10" r=".8" fill="currentColor" fillOpacity=".7"/>
-      <circle cx="12" cy="10" r=".8" fill="currentColor" fillOpacity=".5"/>
-      <circle cx="15" cy="10" r=".8" fill="currentColor" fillOpacity=".3"/>
-      <circle cx="9" cy="13" r=".8" fill="currentColor" fillOpacity=".3"/>
-      <circle cx="12" cy="13" r=".8" fill="currentColor" fillOpacity=".7"/>
-      <circle cx="15" cy="13" r=".8" fill="currentColor" fillOpacity=".5"/>
-      <line x1="9" y1="10" x2="12" y2="7" stroke="currentColor" strokeWidth=".4" strokeOpacity=".3"/>
-      <line x1="12" y1="10" x2="15" y2="7" stroke="currentColor" strokeWidth=".4" strokeOpacity=".3"/>
-      <line x1="15" y1="10" x2="12" y2="13" stroke="currentColor" strokeWidth=".4" strokeOpacity=".3"/>
-    </svg>
-  );
+function ProviderIcon({ provider }: { provider: string }) {
+  if (provider === "openai") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".08"/>
+        <path d="M8 14l3-4 2 4 3-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+  }
+  if (provider === "anthropic") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="5" y="5" width="14" height="14" rx="4" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".06"/>
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity=".12"/>
+      </svg>
+    );
+  }
+  if (provider === "deepseek") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3l9 7-9 7-9-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill="currentColor" fillOpacity=".08"/>
+      </svg>
+    );
+  }
+  return <KeyIcon />;
 }
 
 function InfoIcon() {
@@ -75,6 +75,130 @@ function AlertIcon() {
   );
 }
 
+function EyeIcon({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+}
+
+/* ──── Legacy Config Section (Embedding / ASR) ──── */
+
+function ConfigSection({
+  title,
+  description,
+  icon,
+  statusLabel,
+  detailLines,
+  statusChip,
+  fields,
+  isSaving,
+  onSave,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  statusLabel: string;
+  detailLines: string[];
+  statusChip: React.ReactNode;
+  fields: { label: string; placeholder: string; value: string; onChange: (v: string) => void; isKey?: boolean; alreadySet?: boolean }[];
+  isSaving: boolean;
+  onSave: () => void;
+}) {
+  const [visibleKeys, setVisibleKeys] = useState<Set<number>>(new Set());
+
+  const toggleKey = (i: number) => {
+    setVisibleKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(i)) {
+        next.delete(i);
+      } else {
+        next.add(i);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div className="sk-section">
+      <div className="sk-section-head">
+        {icon ? <span className="sk-section-icon">{icon}</span> : null}
+        <div className="sk-section-titlebox">
+          <h3>{title}</h3>
+          <p>{description}</p>
+        </div>
+        {statusChip}
+      </div>
+        <div className="sk-config-layout">
+        <div className="sk-config-aside">
+          <div className="sk-config-badge">
+            {icon ? <span className="sk-config-badge-icon">{icon}</span> : null}
+            <div>
+              <strong>{statusLabel}</strong>
+              <span>{title} status</span>
+            </div>
+          </div>
+          <p className="sk-config-copy">{description}</p>
+          <div className="sk-config-points">
+            {detailLines.map((line) => (
+              <div key={line} className="sk-config-point">
+                <span className="sk-config-point-dot" />
+                <span>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="sk-emb-fields">
+          {fields.map((f, i) => (
+            <div key={i} className="sk-field">
+              <label>
+                {f.label}
+                {f.alreadySet && !f.value && (
+                  <span className="sk-label-tag">already set</span>
+                )}
+              </label>
+              {f.isKey ? (
+                <div className="sk-input-wrap">
+                  <input
+                    type={visibleKeys.has(i) ? "text" : "password"}
+                    value={f.value}
+                    onChange={e => f.onChange(e.target.value)}
+                    placeholder={f.alreadySet && !f.value ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : f.placeholder}
+                    className="sk-input"
+                  />
+                  <button type="button" className="sk-eye" onClick={() => toggleKey(i)}>
+                    <EyeIcon open={visibleKeys.has(i)} />
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={f.value}
+                  onChange={e => f.onChange(e.target.value)}
+                  placeholder={f.placeholder}
+                  className="sk-input sk-input-text"
+                />
+              )}
+            </div>
+          ))}
+          <button className="sk-btn sk-btn-primary" onClick={onSave} disabled={isSaving}>
+            {isSaving ? "保存中\u2026" : "保存"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ──── Main Component ──── */
 
@@ -82,81 +206,136 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
   const ctx = useDockContext();
   const sessionId = ctx.sessionId;
 
-  const [llmApiKey, setLlmApiKey] = useState("");
-  const [llmBaseUrl, setLlmBaseUrl] = useState("");
-  const [llmModel, setLlmModel] = useState("");
-  const [showLlmKey, setShowLlmKey] = useState(false);
+  const [credentials, setCredentials] = useState<CredentialItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingCred, setEditingCred] = useState<CredentialItem | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // Legacy status
+  const [status, setStatus] = useState<CredentialsStatus | null>(null);
+
+  // Embedding state
   const [embApiKey, setEmbApiKey] = useState("");
   const [embBaseUrl, setEmbBaseUrl] = useState("");
   const [embModel, setEmbModel] = useState("");
-  const [showEmbKey, setShowEmbKey] = useState(false);
+  const [savingEmb, setSavingEmb] = useState(false);
 
-  const [status, setStatus] = useState<CredentialsStatus | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  useEffect(() => {
-    if (isOpen && sessionId) {
-      loadStatus();
-    }
-  }, [isOpen, sessionId]);
+  // ASR state
+  const [asrApiKey, setAsrApiKey] = useState("");
+  const [asrBaseUrl, setAsrBaseUrl] = useState("");
+  const [asrModel, setAsrModel] = useState("");
+  const [savingAsr, setSavingAsr] = useState(false);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadStatus = async () => {
+  const loadCredentials = useCallback(async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    try {
+      const data = await credentialsApi.list(sessionId);
+      setCredentials(data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
+
+  const loadStatus = useCallback(async () => {
     if (!sessionId) return;
     try {
       const data = await settingsApi.getCredentialsStatus(sessionId);
       setStatus(data);
-      setLlmBaseUrl(data.llm_base_url || "");
-      setLlmModel(data.llm_model || "");
       setEmbBaseUrl(data.embedding_base_url || "");
       setEmbModel(data.embedding_model || "");
+      setAsrBaseUrl(data.asr_base_url || "");
+      setAsrModel(data.asr_model || "");
     } catch { /* silent */ }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (isOpen && sessionId) {
+      loadCredentials();
+      loadStatus();
+    }
+  }, [isOpen, sessionId, loadCredentials, loadStatus]);
+
+  // ── Credential CRUD handlers ──
+
+  const handleCreate = async (data: CredentialCreateParams | CredentialUpdateParams) => {
+    if (!sessionId) return;
+    await credentialsApi.create(sessionId, data as CredentialCreateParams);
+    setShowForm(false);
+    showToast("凭证已创建", "success");
+    await loadCredentials();
   };
 
-  const handleSave = async () => {
+  const handleUpdate = async (data: CredentialCreateParams | CredentialUpdateParams) => {
+    if (!sessionId || !editingCred) return;
+    await credentialsApi.update(sessionId, editingCred.id, data as CredentialUpdateParams);
+    setEditingCred(null);
+    showToast("凭证已更新", "success");
+    await loadCredentials();
+  };
+
+  const handleDelete = async (cred: CredentialItem) => {
     if (!sessionId) return;
-    setSaving(true);
+    if (!confirm(`确定删除“${cred.name}”吗？此操作无法撤销。`)) return;
+    await credentialsApi.delete(sessionId, cred.id);
+    showToast("凭证已删除", "success");
+    await loadCredentials();
+  };
+
+  const handleSetDefault = async (cred: CredentialItem) => {
+    if (!sessionId) return;
+    await credentialsApi.setDefault(sessionId, cred.id);
+    showToast(`已将“${cred.name}”设为默认凭证`, "success");
+    await loadCredentials();
+  };
+
+  // ── Embedding save ──
+
+  const handleEmbSave = async () => {
+    if (!sessionId) return;
+    setSavingEmb(true);
     try {
       await settingsApi.setCredentials(sessionId, {
-        ...(llmApiKey && { llm_api_key: llmApiKey }),
-        ...(llmBaseUrl && { llm_base_url: llmBaseUrl }),
-        ...(llmModel && { llm_model: llmModel }),
         ...(embApiKey && { embedding_api_key: embApiKey }),
         ...(embBaseUrl && { embedding_base_url: embBaseUrl }),
         ...(embModel && { embedding_model: embModel }),
       });
-      setLlmApiKey("");
       setEmbApiKey("");
-      showToast("Credentials saved", "success");
+      showToast("Embedding 配置已保存", "success");
       await loadStatus();
     } catch (e) {
-      showToast("Failed to save: " + (e instanceof Error ? e.message : "unknown"), "error");
+      showToast("保存失败：" + (e instanceof Error ? e.message : "未知错误"), "error");
     } finally {
-      setSaving(false);
+      setSavingEmb(false);
     }
   };
 
-  const handleDelete = async () => {
+  // ── ASR save ──
+
+  const handleAsrSave = async () => {
     if (!sessionId) return;
-    if (!confirm("Revert to system default keys? This may incur charges.")) return;
-    setDeleting(true);
+    setSavingAsr(true);
     try {
-      await settingsApi.deleteCredentials(sessionId);
-      setLlmApiKey("");
-      setEmbApiKey("");
-      showToast("Reverted to system defaults", "success");
+      await settingsApi.setCredentials(sessionId, {
+        ...(asrApiKey && { asr_api_key: asrApiKey }),
+        ...(asrBaseUrl && { asr_base_url: asrBaseUrl }),
+        ...(asrModel && { asr_model: asrModel }),
+      });
+      setAsrApiKey("");
+      showToast("ASR 配置已保存", "success");
       await loadStatus();
     } catch (e) {
-      showToast("Failed to delete: " + (e instanceof Error ? e.message : "unknown"), "error");
+      showToast("保存失败：" + (e instanceof Error ? e.message : "未知错误"), "error");
     } finally {
-      setDeleting(false);
+      setSavingAsr(false);
     }
   };
 
@@ -172,166 +351,218 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         </div>
       )}
 
+      {/* ── Form overlay ── */}
+      {(showForm || editingCred) && (
+        <CredentialForm
+          sessionId={sessionId!}
+          credential={editingCred}
+          onSave={editingCred ? handleUpdate : handleCreate}
+          onCancel={() => { setShowForm(false); setEditingCred(null); }}
+        />
+      )}
+
       <div className="sk-head">
-        <h2>API Credentials</h2>
-        <p>Bring your own keys for LLM chat and embedding services.</p>
+        <div>
+          <span className="sk-kicker">凭证中心</span>
+          <h2>API 凭证设置</h2>
+          <p>统一管理对话、向量化与语音识别所使用的 API Key 和模型配置。</p>
+        </div>
+        <div className="sk-head-stat">
+          <strong>{credentials.length}</strong>
+          <span>LLM 凭证</span>
+        </div>
       </div>
 
-      {/* ── LLM Section ── */}
-      <div className="sk-card">
-        <div className="sk-card-head">
-          <span className="sk-card-icon"><LLMIcon /></span>
-          <h3>LLM</h3>
-          {status && (
-            <span className={`sk-chip ${status.llm_is_configured ? "on" : "off"}`}>
-              {status.llm_is_configured ? (
-                <><CheckIcon /> {status.llm_masked_key}</>
-              ) : (
-                <><AlertIcon /> unconfigured &mdash; billing applies</>
-              )}
-            </span>
-          )}
-        </div>
-
-        <div className="sk-field">
-          <label>
-            API Key
-            {status?.llm_is_configured && !llmApiKey && (
-              <span className="sk-label-tag">already set</span>
-            )}
-          </label>
-          <div className="sk-input-wrap">
-            <input
-              type={showLlmKey ? "text" : "password"}
-              value={llmApiKey}
-              onChange={e => setLlmApiKey(e.target.value)}
-              placeholder={status?.llm_is_configured && !llmApiKey ? "••••••••" : "sk-…"}
-              className="sk-input"
-            />
-            <button type="button" className="sk-eye" onClick={() => setShowLlmKey(!showLlmKey)}>
-              {showLlmKey ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
+      <div className="sk-overview">
+        <div className="sk-overview-card">
+          <span className="sk-overview-icon"><KeyIcon /></span>
+          <div>
+            <strong>{credentials.length}</strong>
+            <p>LLM API Key</p>
           </div>
         </div>
-
-        <div className="sk-field">
-          <label>Base URL</label>
-          <input
-            type="text"
-            value={llmBaseUrl}
-            onChange={e => setLlmBaseUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1"
-            className="sk-input"
-          />
+        <div className="sk-overview-card">
+          <div>
+            <strong>{status?.embedding_is_configured ? "已配置" : "待配置"}</strong>
+            <p>向量化引擎</p>
+          </div>
         </div>
-
-        <div className="sk-field">
-          <label>Model</label>
-          <input
-            type="text"
-            value={llmModel}
-            onChange={e => setLlmModel(e.target.value)}
-            placeholder="gpt-4o"
-            className="sk-input"
-          />
+        <div className="sk-overview-card">
+          <div>
+            <strong>{status?.asr_is_configured ? "已配置" : "待配置"}</strong>
+            <p>语音识别服务</p>
+          </div>
         </div>
       </div>
 
-      {/* ── Embedding Section ── */}
-      <div className="sk-card">
-        <div className="sk-card-head">
-          <span className="sk-card-icon"><EmbeddingIcon /></span>
-          <h3>Embedding</h3>
-          {status && (
+      {/* ── Section 1: LLM Credentials (multi) ── */}
+      <div className="sk-section">
+        <div className="sk-section-head">
+          <span className="sk-section-icon"><KeyIcon /></span>
+          <div className="sk-section-titlebox">
+            <h3>LLM 凭证</h3>
+            <p>支持配置多个服务商，并选择一个默认运行凭证。</p>
+          </div>
+          <button className="sk-add-btn" onClick={() => setShowForm(true)}>
+            <Plus size={15} />
+            <span>新增</span>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="sk-loading">加载中\u2026</div>
+        ) : credentials.length === 0 ? (
+          <div className="sk-empty">
+            <p>当前还没有配置任何凭证。</p>
+            <p className="sk-empty-sub">添加 API Key 后即可使用你自己的 LLM 服务商。</p>
+          </div>
+        ) : (
+          <div className="sk-list">
+            {credentials.map(cred => (
+              <div key={cred.id} className={`sk-cred-card ${cred.is_default ? "is-default" : ""}`}>
+                <div className="sk-cred-top">
+                  <span className="sk-cred-icon"><ProviderIcon provider={cred.provider} /></span>
+                  <div className="sk-cred-info">
+                    <div className="sk-cred-name">
+                      <span className="sk-cred-name-text">{cred.name}</span>
+                      {cred.is_default && <span className="sk-default-badge"><ShieldCheck size={11} /> 默认</span>}
+                    </div>
+                    <div className="sk-cred-meta">
+                      <span className="sk-provider-tag">{cred.provider}</span>
+                      <span className="sk-masked">密钥：{cred.masked_key}</span>
+                      {cred.default_model && <span className="sk-model">模型：{cred.default_model}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="sk-cred-actions">
+                  <button className="sk-act-btn" title="编辑" onClick={() => setEditingCred(cred)}>
+                    <Pencil size={14} />
+                  </button>
+                  {!cred.is_default && (
+                    <button className="sk-act-btn sk-act-star" title="设为默认" onClick={() => handleSetDefault(cred)}>
+                      <Star size={14} />
+                    </button>
+                  )}
+                  <button className="sk-act-btn sk-act-del" title="删除" onClick={() => handleDelete(cred)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 2: Embedding (single) ── */}
+      <ConfigSection
+        title="Embedding"
+        description="用于知识库向量化、索引构建与检索召回的服务配置。"
+        icon={null}
+        statusLabel={status?.embedding_is_configured ? "已配置" : "待配置"}
+        detailLines={[
+          status?.embedding_is_configured
+            ? `当前密钥：${status.embedding_masked_key || "已隐藏"}`
+            : "当前还没有保存自定义 Embedding 密钥。",
+          "修改模型后，建议重新构建知识库。",
+          embBaseUrl || "如不修改，将继续使用默认接口地址。",
+        ]}
+        statusChip={
+          status && (
             <span className={`sk-chip ${status.embedding_is_configured ? "on" : "off"}`}>
               {status.embedding_is_configured ? (
                 <><CheckIcon /> {status.embedding_masked_key}</>
               ) : (
-                <><AlertIcon /> unconfigured &mdash; billing applies</>
+                <><AlertIcon /> 未配置</>
               )}
             </span>
-          )}
-        </div>
+          )
+        }
+        fields={[
+          {
+            label: "API Key", placeholder: "sk-\u2026", value: embApiKey, onChange: setEmbApiKey,
+            isKey: true, alreadySet: status?.embedding_is_configured ?? false,
+          },
+          {
+            label: "接口地址", placeholder: "https://api.openai.com/v1", value: embBaseUrl, onChange: setEmbBaseUrl,
+          },
+          {
+            label: "模型", placeholder: "text-embedding-3-small", value: embModel, onChange: setEmbModel,
+          },
+        ]}
+        isSaving={savingEmb}
+        onSave={handleEmbSave}
+      />
 
-        <div className="sk-field">
-          <label>
-            API Key
-            {status?.embedding_is_configured && !embApiKey && (
-              <span className="sk-label-tag">already set</span>
-            )}
-          </label>
-          <div className="sk-input-wrap">
-            <input
-              type={showEmbKey ? "text" : "password"}
-              value={embApiKey}
-              onChange={e => setEmbApiKey(e.target.value)}
-              placeholder={status?.embedding_is_configured && !embApiKey ? "••••••••" : "sk-…"}
-              className="sk-input"
-            />
-            <button type="button" className="sk-eye" onClick={() => setShowEmbKey(!showEmbKey)}>
-              {showEmbKey ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-        </div>
+      {/* ── Section 3: ASR (single) ── */}
+      <ConfigSection
+        title="ASR（语音识别）"
+        description="用于音频转写、字幕提取与语音内容识别的服务配置。"
+        icon={null}
+        statusLabel={status?.asr_is_configured ? "已配置" : "待配置"}
+        detailLines={[
+          status?.asr_is_configured
+            ? `当前密钥：${status.asr_masked_key || "已隐藏"}`
+            : "当前还没有保存自定义 ASR 密钥。",
+          "用于音频转文字和字幕提取。",
+          asrBaseUrl || "如不修改，将继续使用默认 ASR 接口地址。",
+        ]}
+        statusChip={
+          status && (
+            <span className={`sk-chip ${status.asr_is_configured ? "on" : "off"}`}>
+              {status.asr_is_configured ? (
+                <><CheckIcon /> {status.asr_masked_key}</>
+              ) : (
+                <><AlertIcon /> 未配置</>
+              )}
+            </span>
+          )
+        }
+        fields={[
+          {
+            label: "API Key", placeholder: "sk-\u2026", value: asrApiKey, onChange: setAsrApiKey,
+            isKey: true, alreadySet: status?.asr_is_configured ?? false,
+          },
+          {
+            label: "接口地址", placeholder: "https://dashscope.aliyuncs.com/compatible-mode/v1", value: asrBaseUrl, onChange: setAsrBaseUrl,
+          },
+          {
+            label: "模型", placeholder: "funasr-paraformer", value: asrModel, onChange: setAsrModel,
+          },
+        ]}
+        isSaving={savingAsr}
+        onSave={handleAsrSave}
+      />
 
-        <div className="sk-field">
-          <label>Base URL</label>
-          <input
-            type="text"
-            value={embBaseUrl}
-            onChange={e => setEmbBaseUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1"
-            className="sk-input"
-          />
-        </div>
-
-        <div className="sk-field">
-          <label>Model</label>
-          <input
-            type="text"
-            value={embModel}
-            onChange={e => setEmbModel(e.target.value)}
-            placeholder="text-embedding-3-small"
-            className="sk-input"
-          />
-        </div>
-      </div>
-
-      {/* ── Actions ── */}
-      <div className="sk-actions">
-        <button className="sk-btn sk-btn-primary" onClick={handleSave} disabled={saving || !sessionId}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button className="sk-btn sk-btn-ghost" onClick={handleDelete} disabled={deleting || !sessionId}>
-          {deleting ? "Removing…" : "Revert to defaults"}
-        </button>
-      </div>
-
-      {/* ── Notice ── */}
+      {/* ── Notice (in scroll flow, NOT pinned) ── */}
       <div className="sk-note">
         <span className="sk-note-icon"><InfoIcon /></span>
         <div>
-          <p>Without your own keys the system falls back to shared defaults — <strong>charges apply</strong>.</p>
-          <p>Changing the embedding model requires rebuilding the knowledge base.</p>
+          <p>如果不配置你自己的密钥，系统会回退到共享默认配置，<strong>可能产生费用</strong>。</p>
+          <p>修改 Embedding 模型后，通常需要重新构建知识库才能保持检索一致性。</p>
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .sk-panel {
           height: 100%;
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 14px;
-          padding: 20px 22px;
+          gap: 16px;
+          padding: 22px;
+          padding-bottom: 24px;
           overflow-y: auto;
-          background: var(--panel-bg, #fff);
-          color: var(--fg, #18181b);
+          background:
+            radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 28%),
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          color: #0f172a;
           font-family: system-ui, -apple-system, sans-serif;
+          position: relative;
         }
 
         /* ── Toast ── */
         .sk-toast {
-          position: absolute;
+          position: fixed;
           top: 12px;
           right: 14px;
           padding: 7px 14px;
@@ -346,14 +577,16 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
           backdrop-filter: blur(8px);
         }
         .sk-toast.success {
-          background: #f0fdf4;
+          background: rgba(240, 253, 244, 0.96);
           color: #166534;
           border: 1px solid #bbf7d0;
+          box-shadow: 0 10px 32px rgba(22, 101, 52, 0.08);
         }
         .sk-toast.error {
-          background: #fef2f2;
+          background: rgba(254, 242, 242, 0.96);
           color: #991b1b;
           border: 1px solid #fecaca;
+          box-shadow: 0 10px 32px rgba(153, 27, 27, 0.08);
         }
         .sk-toast-icon { display: flex; }
         @keyframes skSlideIn {
@@ -362,89 +595,499 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         }
 
         /* ── Header ── */
+        .sk-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: flex-start;
+          padding: 18px 18px 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+        .sk-kicker {
+          display: inline-flex;
+          align-items: center;
+          margin-bottom: 8px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.08);
+          color: #1d4ed8;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
         .sk-head h2 {
           font-size: 17px;
-          font-weight: 620;
-          margin: 0 0 2px;
-          letter-spacing: -0.01em;
+          font-weight: 700;
+          margin: 0 0 4px;
+          letter-spacing: -0.02em;
         }
         .sk-head p {
+          max-width: 540px;
           font-size: 12.5px;
-          color: var(--fg-muted, #71717a);
+          color: #64748b;
           margin: 0;
         }
+        .sk-head-stat {
+          display: grid;
+          gap: 2px;
+          min-width: 108px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%);
+          border: 1px solid rgba(147, 197, 253, 0.9);
+          color: #1e3a8a;
+          text-align: right;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        }
+        .sk-head-stat strong {
+          font-size: 22px;
+          line-height: 1;
+          font-weight: 700;
+        }
+        .sk-head-stat span {
+          font-size: 11px;
+          font-weight: 600;
+          opacity: 0.88;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .sk-overview {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .sk-overview-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(226, 232, 240, 0.92);
+          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+        }
+        .sk-overview-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          color: #2563eb;
+          background: rgba(37, 99, 235, 0.08);
+          border: 1px solid rgba(191, 219, 254, 0.85);
+          flex-shrink: 0;
+        }
+        .sk-overview-icon svg,
+        .sk-section-icon svg,
+        .sk-config-badge-icon svg,
+        .sk-chip svg {
+          display: block;
+          flex-shrink: 0;
+        }
+        .sk-overview-card strong {
+          display: block;
+          font-size: 15px;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.02em;
+        }
+        .sk-overview-card p {
+          margin: 2px 0 0;
+          font-size: 12px;
+          color: #64748b;
+          font-weight: 500;
+        }
 
-        /* ── Card ── */
-        .sk-card {
-          border: 1px solid var(--border, #e4e4e7);
+        /* ── Section ── */
+        .sk-section {
+          border: 1px solid rgba(226, 232, 240, 0.92);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.94);
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          overflow: hidden;
+          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+        }
+        .sk-section-head {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 15px 18px;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.88);
+          background: linear-gradient(180deg, rgba(248, 250, 252, 0.95) 0%, rgba(255, 255, 255, 0.92) 100%);
+        }
+        .sk-section-head h3 {
+          font-size: 14px;
+          font-weight: 700;
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+        .sk-section-titlebox {
+          flex: 1;
+          min-width: 0;
+        }
+        .sk-section-titlebox p {
+          margin: 3px 0 0;
+          font-size: 12px;
+          color: #64748b;
+          line-height: 1.5;
+        }
+        .sk-section-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
           border-radius: 10px;
-          padding: 15px 16px;
+          color: #2563eb;
+          background: rgba(37, 99, 235, 0.08);
+          border: 1px solid rgba(147, 197, 253, 0.55);
+        }
+        .sk-config-layout {
+          display: grid;
+          grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+          gap: 0;
+        }
+        .sk-config-aside {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding: 18px;
+          background:
+            linear-gradient(180deg, rgba(239, 246, 255, 0.9) 0%, rgba(248, 250, 252, 0.85) 100%);
+          border-right: 1px solid rgba(226, 232, 240, 0.88);
+        }
+        .sk-config-badge {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(191, 219, 254, 0.92);
+        }
+        .sk-config-badge-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          color: #2563eb;
+          background: rgba(37, 99, 235, 0.1);
+          border: 1px solid rgba(147, 197, 253, 0.8);
+          flex-shrink: 0;
+          line-height: 0;
+        }
+        .sk-config-badge strong {
+          display: block;
+          font-size: 15px;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.02em;
+        }
+        .sk-config-badge span {
+          display: block;
+          margin-top: 2px;
+          font-size: 11px;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          font-weight: 700;
+        }
+        .sk-config-copy {
+          margin: 0;
+          font-size: 12.5px;
+          line-height: 1.65;
+          color: #475569;
+        }
+        .sk-config-points {
           display: flex;
           flex-direction: column;
           gap: 10px;
-          background: var(--card-bg, #fafafa);
-          transition: border-color .15s;
         }
-        .sk-card:focus-within {
-          border-color: var(--accent, #52525b);
+        .sk-config-point {
+          display: flex;
+          align-items: flex-start;
+          gap: 9px;
+          font-size: 12px;
+          color: #475569;
+          line-height: 1.55;
+        }
+        .sk-config-point-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #3b82f6;
+          flex-shrink: 0;
+          margin-top: 6px;
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
         }
 
-        .sk-card-head {
+        .sk-add-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 13px;
+          border: 1px solid rgba(191, 219, 254, 0.95);
+          border-radius: 10px;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+          color: #0f172a;
+          font-size: 12.5px;
+          font-weight: 650;
+          cursor: pointer;
+          transition: background .12s, border-color .12s, transform .12s, box-shadow .12s;
+        }
+        .sk-add-btn:hover {
+          background: #eff6ff;
+          border-color: #93c5fd;
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+        }
+
+        /* ── Loading / Empty ── */
+        .sk-loading {
+          padding: 28px;
+          text-align: center;
+          font-size: 13px;
+          color: #94a3b8;
+        }
+        .sk-empty {
+          padding: 30px 24px;
+          text-align: center;
+          background:
+            radial-gradient(circle at top, rgba(59, 130, 246, 0.06), transparent 40%),
+            transparent;
+        }
+        .sk-empty p {
+          margin: 0;
+          font-size: 13px;
+          color: #475569;
+          font-weight: 600;
+        }
+        .sk-empty-sub {
+          font-size: 12px !important;
+          color: #94a3b8 !important;
+          margin-top: 6px !important;
+          font-weight: 500 !important;
+        }
+
+        /* ── Credential cards ── */
+        .sk-list {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          overflow-y: auto;
+          gap: 14px;
+          max-height: 360px;
+          padding: 18px;
+        }
+        .sk-cred-card {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: space-between;
+          padding: 16px;
+          border: 1px solid rgba(226, 232, 240, 0.92);
+          border-radius: 16px;
+          transition: background .12s, transform .12s, box-shadow .12s, border-color .12s;
+          gap: 12px;
+          background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          min-width: 0;
+        }
+        .sk-cred-card.is-default {
+          background:
+            radial-gradient(circle at top right, rgba(34, 197, 94, 0.11), transparent 34%),
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          border-color: rgba(134, 239, 172, 0.95);
+        }
+        .sk-cred-card:hover {
+          transform: translateY(-2px);
+          border-color: #bfdbfe;
+          box-shadow: 0 14px 32px rgba(37, 99, 235, 0.1);
+        }
+        .sk-cred-card.is-default:hover {
+          box-shadow: 0 16px 34px rgba(22, 163, 74, 0.1);
+        }
+
+        .sk-cred-top {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          min-width: 0;
+          flex: 1;
+        }
+        .sk-cred-icon {
           display: flex;
           align-items: center;
+          justify-content: center;
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          color: #2563eb;
+          background: rgba(37, 99, 235, 0.08);
+          border: 1px solid rgba(191, 219, 254, 0.8);
+          flex-shrink: 0;
+        }
+        .sk-cred-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 0;
+          flex: 1;
+        }
+        .sk-cred-name {
+          font-size: 14px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+        .sk-cred-name-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .sk-default-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 10px;
+          font-weight: 700;
+          color: #166534;
+          background: #dcfce7;
+          padding: 3px 7px;
+          border-radius: 999px;
+          border: 1px solid #bbf7d0;
+          flex-shrink: 0;
+        }
+        .sk-cred-meta {
+          display: flex;
+          align-items: flex-start;
           gap: 8px;
+          font-size: 11.5px;
+          color: #64748b;
           flex-wrap: wrap;
         }
-        .sk-card-head h3 {
-          font-size: 13.5px;
-          font-weight: 600;
-          margin: 0;
-          letter-spacing: -0.01em;
+        .sk-provider-tag {
+          font-weight: 700;
+          color: #1d4ed8;
+          text-transform: capitalize;
+          flex-shrink: 0;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.08);
         }
-        .sk-card-icon {
+        .sk-masked {
+          font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #f8fafc;
+          border: 1px solid rgba(226, 232, 240, 0.95);
+        }
+        .sk-model {
+          font-size: 11px;
+          color: #475569;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #f8fafc;
+          border: 1px solid rgba(226, 232, 240, 0.95);
+        }
+
+        .sk-cred-actions {
           display: flex;
-          color: var(--fg-muted, #71717a);
+          justify-content: flex-end;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .sk-act-btn {
+          background: #fff;
+          border: 1px solid rgba(226, 232, 240, 0.95);
+          padding: 8px;
+          border-radius: 10px;
+          cursor: pointer;
+          color: #64748b;
+          display: flex;
+          transition: color .12s, background .12s, border-color .12s, transform .12s;
+        }
+        .sk-act-btn:hover {
+          color: #0f172a;
+          background: #eff6ff;
+          border-color: #bfdbfe;
+          transform: translateY(-1px);
+        }
+        .sk-act-star:hover {
+          color: #ca8a04;
+          border-color: #fde047;
+          background: #fefce8;
+        }
+        .sk-act-del:hover {
+          color: #dc2626;
+          border-color: #fecaca;
+          background: #fef2f2;
         }
 
         /* ── Chip ── */
         .sk-chip {
           font-size: 11px;
-          padding: 2px 10px;
+          padding: 4px 10px;
           border-radius: 999px;
-          font-weight: 500;
+          font-weight: 700;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          justify-content: center;
+          gap: 5px;
           white-space: nowrap;
+          border: 1px solid transparent;
+          line-height: 1;
         }
         .sk-chip.on {
           background: #f0fdf4;
           color: #166534;
+          border-color: #bbf7d0;
         }
         .sk-chip.off {
           background: #fffbeb;
           color: #92400e;
+          border-color: #fde68a;
+        }
+
+        /* ── Config fields (Embedding / ASR) ── */
+        .sk-emb-fields {
+          padding: 18px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          background: rgba(255, 255, 255, 0.96);
         }
 
         /* ── Field ── */
         .sk-field {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
         .sk-field label {
           font-size: 11px;
-          font-weight: 550;
-          color: var(--fg-muted, #71717a);
+          font-weight: 700;
+          color: #475569;
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.06em;
           display: flex;
           align-items: center;
           gap: 6px;
         }
         .sk-label-tag {
           font-size: 10px;
-          font-weight: 500;
+          font-weight: 700;
           text-transform: none;
           letter-spacing: 0;
           color: #166534;
@@ -455,23 +1098,28 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
 
         .sk-input {
           width: 100%;
-          padding: 7px 10px;
-          border: 1px solid var(--border, #d4d4d8);
-          border-radius: 6px;
+          min-height: 42px;
+          padding: 10px 12px;
+          border: 1px solid #dbe4f0;
+          border-radius: 12px;
           font-size: 13px;
-          background: var(--input-bg, #fff);
-          color: var(--fg, #18181b);
+          background: #f8fbff;
+          color: #0f172a;
           outline: none;
-          transition: border-color .15s, box-shadow .15s;
+          transition: border-color .15s, box-shadow .15s, background .15s;
           font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+        .sk-input-text {
+          font-family: system-ui, -apple-system, sans-serif;
         }
         .sk-input::placeholder {
           font-family: system-ui, -apple-system, sans-serif;
-          color: #a1a1aa;
+          color: #94a3b8;
         }
         .sk-input:focus {
-          border-color: var(--accent, #52525b);
-          box-shadow: 0 0 0 2.5px rgba(82, 82, 91, 0.1);
+          border-color: #60a5fa;
+          background: #fff;
+          box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
         }
 
         .sk-input-wrap {
@@ -484,76 +1132,94 @@ export default function SettingsPanel({ isOpen }: DockPanelProps) {
         }
         .sk-eye {
           position: absolute;
-          right: 4px;
-          background: none;
+          right: 6px;
+          background: transparent;
           border: none;
-          padding: 5px;
+          padding: 6px;
           cursor: pointer;
-          color: var(--fg-muted, #a1a1aa);
+          color: #94a3b8;
           display: flex;
-          border-radius: 4px;
+          border-radius: 8px;
           transition: color .12s, background .12s;
         }
         .sk-eye:hover {
-          color: var(--fg, #18181b);
-          background: var(--hover, #f4f4f5);
+          color: #0f172a;
+          background: rgba(226, 232, 240, 0.72);
         }
 
-        /* ── Actions ── */
-        .sk-actions {
-          display: flex;
-          gap: 10px;
-        }
+        /* ── Buttons ── */
         .sk-btn {
-          flex: 1;
           padding: 9px 0;
           border: none;
-          border-radius: 7px;
-          font-size: 13px;
-          font-weight: 550;
+          border-radius: 12px;
+          font-size: 12.5px;
+          font-weight: 700;
           cursor: pointer;
-          transition: opacity .15s, background .15s, transform .1s;
-          letter-spacing: -0.01em;
+          transition: opacity .15s, background .15s, transform .1s, box-shadow .15s;
+          letter-spacing: -0.02em;
+          width: auto;
+          min-width: 128px;
+          justify-self: end;
+          grid-column: 1 / -1;
+          margin-top: 2px;
         }
         .sk-btn:active:not(:disabled) { transform: scale(0.98); }
-        .sk-btn:disabled {
-          opacity: 0.45;
-          cursor: not-allowed;
-        }
+        .sk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .sk-btn-primary {
-          background: var(--fg, #18181b);
-          color: #fff;
+          background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+          color: #075985;
+          border: 1px solid #7dd3fc;
+          box-shadow: 0 8px 18px rgba(14, 165, 233, 0.14);
         }
-        .sk-btn-primary:hover:not(:disabled) { background: var(--fg, #27272a); }
-        .sk-btn-ghost {
-          background: transparent;
-          color: #dc2626;
-          border: 1px solid var(--border, #e4e4e7);
-        }
-        .sk-btn-ghost:hover:not(:disabled) {
-          background: #fef2f2;
+        .sk-btn-primary:hover:not(:disabled) {
+          background: linear-gradient(180deg, #dbeafe 0%, #bae6fd 100%);
+          box-shadow: 0 10px 20px rgba(14, 165, 233, 0.18);
         }
 
-        /* ── Note ── */
+        /* ── Note (in scroll flow, NOT pinned to bottom) ── */
         .sk-note {
-          font-size: 11.5px;
-          color: var(--fg-muted, #71717a);
-          padding: 11px 13px;
-          background: var(--bg-muted, #f4f4f5);
-          border-radius: 8px;
-          line-height: 1.65;
+          font-size: 12px;
+          color: #475569;
+          padding: 14px 15px;
+          background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+          border: 1px solid rgba(191, 219, 254, 0.9);
+          border-radius: 16px;
+          line-height: 1.7;
           display: flex;
-          gap: 8px;
+          gap: 10px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
         .sk-note-icon {
           flex-shrink: 0;
-          margin-top: 1px;
-          color: var(--fg-muted, #a1a1aa);
+          margin-top: 2px;
+          color: #3b82f6;
         }
         .sk-note p {
-          margin: 0 0 3px;
+          margin: 0 0 4px;
         }
         .sk-note p:last-child { margin-bottom: 0; }
+
+        @media (max-width: 760px) {
+          .sk-head {
+            flex-direction: column;
+          }
+          .sk-head-stat {
+            width: 100%;
+            text-align: left;
+          }
+          .sk-overview,
+          .sk-list,
+          .sk-emb-fields {
+            grid-template-columns: 1fr;
+          }
+          .sk-config-layout {
+            grid-template-columns: 1fr;
+          }
+          .sk-config-aside {
+            border-right: none;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.88);
+          }
+        }
       `}</style>
     </div>
   );
