@@ -34,6 +34,9 @@ class UserSettingsRepository:
         embedding_api_key_encrypted: Optional[str] = None,
         embedding_base_url: Optional[str] = None,
         embedding_model: Optional[str] = None,
+        asr_api_key_encrypted: Optional[str] = None,
+        asr_base_url: Optional[str] = None,
+        asr_model: Optional[str] = None,
     ) -> UserSettings:
         """
         写入或更新用户配置（部分更新：只更新非 None 字段）。
@@ -60,6 +63,12 @@ class UserSettingsRepository:
             record.embedding_base_url = embedding_base_url
         if embedding_model is not None:
             record.embedding_model = embedding_model
+        if asr_api_key_encrypted is not None:
+            record.asr_api_key_encrypted = asr_api_key_encrypted
+        if asr_base_url is not None:
+            record.asr_base_url = asr_base_url
+        if asr_model is not None:
+            record.asr_model = asr_model
 
         await db.commit()
         await db.refresh(record)
