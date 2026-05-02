@@ -506,6 +506,10 @@ class UserSettings(Base):
     embedding_api_key_encrypted = Column(Text, nullable=True)
     embedding_base_url = Column(Text, nullable=True)
     embedding_model = Column(Text, nullable=True)
+    # ASR 配置（Key 密文存储）
+    asr_api_key_encrypted = Column(Text, nullable=True)
+    asr_base_url = Column(Text, nullable=True)
+    asr_model = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -520,6 +524,9 @@ class ApiKeySetRequest(BaseModel):
     embedding_api_key: Optional[str] = None
     embedding_base_url: Optional[str] = None
     embedding_model: Optional[str] = None
+    asr_api_key: Optional[str] = None
+    asr_base_url: Optional[str] = None
+    asr_model: Optional[str] = None
 
 
 class ApiKeyStatusResponse(BaseModel):
@@ -532,4 +539,105 @@ class ApiKeyStatusResponse(BaseModel):
     embedding_masked_key: Optional[str] = None
     embedding_base_url: Optional[str] = None
     embedding_model: Optional[str] = None
+    asr_is_configured: bool = False
+    asr_masked_key: Optional[str] = None
+    asr_base_url: Optional[str] = None
+    asr_model: Optional[str] = None
     updated_at: Optional[datetime] = None
+
+
+# ==================== SQLAlchemy 模型 (多 Provider Credential) ====================
+
+class UserCredential(Base):
+    """用户多 Provider API Key 配置表"""
+    __tablename__ = "user_credentials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    name = Column(String(64), nullable=False)          # 用户自定义名称，如 "我的 OpenAI"
+    provider = Column(String(32), nullable=False)       # openai / anthropic / deepseek / custom
+    api_key_encrypted = Column(Text, nullable=False)
+    base_url = Column(Text, nullable=True)
+    default_model = Column(Text, nullable=True)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CredentialUsage(Base):
+    """凭证用量记录表"""
+    __tablename__ = "credential_usage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    credential_id = Column(Integer, nullable=True)      # NULL = 系统默认 Key
+    provider = Column(String(32), nullable=True)
+    model = Column(String(64), nullable=True)
+    prompt_tokens = Column(Integer, default=0)
+    completion_tokens = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    api_calls = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ==================== Pydantic 模型 (多 Provider Credential) ====================
+
+class CredentialCreate(BaseModel):
+    """新建 Credential 请求"""
+    name: str
+    provider: str           # openai | anthropic | deepseek | custom
+    api_key: str            # 明文，服务端加密
+    base_url: Optional[str] = None
+    default_model: Optional[str] = None
+    is_default: bool = False
+
+
+class CredentialUpdate(BaseModel):
+    """更新 Credential 请求（部分更新）"""
+    name: Optional[str] = None
+    api_key: Optional[str] = None       # 传了才更新
+    base_url: Optional[str] = None
+    default_model: Optional[str] = None
+    is_default: Optional[bool] = None
+
+
+class CredentialResponse(BaseModel):
+    """Credential 列表项响应（不包含完整 Key）"""
+    id: int
+    name: str
+    provider: str
+    masked_key: str                     # "sk-abc...4f2a"
+    base_url: Optional[str] = None
+    default_model: Optional[str] = None
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProviderUsage(BaseModel):
+    """按 Provider 聚合的用量"""
+    provider: str
+    total_tokens: int
+    api_calls: int
+    cost_estimate: float = 0.0          # 预估费用（暂为 0）
+
+
+class CredentialUsageItem(BaseModel):
+    """按 Credential 聚合的用量"""
+    credential_id: Optional[int] = None  # None = 系统默认
+    name: str
+    provider: str
+    total_tokens: int
+    api_calls: int
+    cost_estimate: float = 0.0
+
+
+class UsageSummary(BaseModel):
+    """用量汇总响应"""
+    total_tokens: int
+    total_api_calls: int
+    by_provider: list[ProviderUsage]     # 饼图数据
+    by_credential: list[CredentialUsageItem]  # 树状图数据
