@@ -55,6 +55,7 @@ async def set_credentials(
     has_any = any([
         req.llm_api_key, req.llm_base_url, req.llm_model,
         req.embedding_api_key, req.embedding_base_url, req.embedding_model,
+        req.asr_api_key, req.asr_base_url, req.asr_model,
     ])
     if not has_any:
         raise HTTPException(status_code=400, detail="请至少填写一个配置项")
@@ -69,6 +70,9 @@ async def set_credentials(
             embedding_key=req.embedding_api_key,
             embedding_base_url=req.embedding_base_url,
             embedding_model=req.embedding_model,
+            asr_key=req.asr_api_key,
+            asr_base_url=req.asr_base_url,
+            asr_model=req.asr_model,
             db=db,
         )
         logger.info(f"[SETTINGS] API keys updated for session={session_id[:8]}...")
