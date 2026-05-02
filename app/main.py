@@ -30,6 +30,8 @@ from app.database import init_db
 from app.routers import auth, favorites, knowledge, chat, settings as settings_router
 from app.routers.asr import router as asr_router
 from app.routers.vector_page import router as vector_page_router
+from app.routers.credentials import router as credentials_router
+from app.routers.billing import router as billing_router
 
 
 # 配置日志
@@ -121,6 +123,10 @@ async def lifespan(app: FastAPI):
         )
     )
 
+    # 初始化 BufferedUsageWriter（用量缓冲批量写入器）
+    from app.services.llm.buffered_usage_writer import start_buffered_usage_writer
+    app.state.usage_writer = await start_buffered_usage_writer()
+
     # 初始化 QueryRewriter
     from app.services.query import QueryRewriter
     app.state.rewriter = QueryRewriter()
@@ -150,10 +156,19 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # 关闭时
-    await app.state.rewriter.close()
-    logger.info("[QUERY_REWRITE] QueryRewriter shutdown")
-    logger.info("👋 应用关闭")
+    # 关闭时 — 使用 asyncio.shield 防止 Ctrl+C 取消导致缓冲区数据丢失
+    import asyncio as _asyncio
+    try:
+        from app.services.llm.buffered_usage_writer import shutdown_buffered_usage_writer
+        await _asyncio.shield(shutdown_buffered_usage_writer())
+
+        await _asyncio.shield(app.state.rewriter.close())
+        logger.info("[QUERY_REWRITE] QueryRewriter shutdown")
+        logger.info("👋 应用关闭")
+    except _asyncio.CancelledError:
+        logger.info("👋 应用关闭（interrupted）")
+    except Exception:
+        logger.exception("Shutdown error")
 
 
 # 创建 FastAPI 应用
@@ -200,6 +215,8 @@ app.include_router(chat.router)
 app.include_router(settings_router.router)
 app.include_router(asr_router)
 app.include_router(vector_page_router)
+app.include_router(credentials_router)
+app.include_router(billing_router)
 
 
 @app.get("/")
