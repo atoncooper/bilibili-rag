@@ -3,16 +3,30 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import ParticleField from "./ParticleField";
-import WorkflowRing from "./WorkflowRing";
+import DockModuleOrbit from "./DockModuleOrbit";
 import Sun from "./Sun";
 import Earth from "./Earth";
+import Mars from "./Mars";
+import Jupiter from "./Jupiter";
+import Saturn from "./Saturn";
+import Neptune from "./Neptune";
 import MeteorShower from "./MeteorShower";
+import TechGalaxy from "./TechGalaxy";
+import type { DockModule } from "@/lib/dock-registry";
 
 interface ThreeJSSceneProps {
   dimmed?: boolean;
+  dockModules: DockModule[];
+  activePanelId: string | null;
+  onTogglePanel: (id: string) => void;
 }
 
-export default function ThreeJSScene({ dimmed = false }: ThreeJSSceneProps) {
+export default function ThreeJSScene({
+  dimmed = false,
+  dockModules,
+  activePanelId,
+  onTogglePanel,
+}: ThreeJSSceneProps) {
   return (
     <div className="three-scene-container" style={{ flex: 1, width: "100%", height: "100%" }}>
       <Canvas
@@ -23,17 +37,29 @@ export default function ThreeJSScene({ dimmed = false }: ThreeJSSceneProps) {
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: false }}
       >
-        <color attach="background" args={["#0a0a0a"]} />
-        <ambientLight intensity={0.25} />
-        <pointLight position={[5, 5, 5]} intensity={0.6} color="#ffffff" />
-        <pointLight position={[-5, -3, 3]} intensity={0.35} color="#888888" />
-        <pointLight position={[0, 3, 0]} intensity={0.5} color="#06b6d4" />
-        {/* Warm light from sun direction */}
-        <directionalLight position={[-7.5, 0.8, -2]} intensity={0.4} color="#ffaa66" />
+        <color attach="background" args={["#0d0d0d"]} />
+        <ambientLight intensity={0.3} color="#ffd599" />
+        {/* Warm sunlight from the sun direction */}
+        <directionalLight position={[-7.5, 0.8, -2]} intensity={1.2} color="#ffcc66" />
+        <directionalLight position={[0, -2, 5]} intensity={0.15} color="#ffaa33" />
+        {/* Subtle fill to prevent harsh shadows */}
+        <pointLight position={[5, 5, 5]} intensity={0.25} color="#ffd599" />
+        {/* Bottom rim light for depth */}
+        <pointLight position={[0, -8, 2]} intensity={0.2} color="#886633" />
         <ParticleField />
-        <WorkflowRing />
+        <DockModuleOrbit
+          dockModules={dockModules}
+          activePanelId={activePanelId}
+          onTogglePanel={onTogglePanel}
+          dimmed={dimmed}
+        />
+        <TechGalaxy dimmed={dimmed} />
         <Sun />
         <Earth />
+        <Mars />
+        <Jupiter />
+        <Saturn />
+        <Neptune />
         <MeteorShower />
         <OrbitControls
           enableDamping

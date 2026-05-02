@@ -13,6 +13,7 @@ import { ChatSidebarRenameDialog } from "@/components/chat-sidebar/ChatSidebarRe
 import { ChatSidebarDeleteDialog } from "@/components/chat-sidebar/ChatSidebarDeleteDialog";
 import { useAppStore } from "@/stores/app-store";
 import ThreeJSScene from "@/components/three/ThreeJSScene";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Home() {
   const [session, setSession] = useState<string | null>(null);
@@ -185,6 +186,12 @@ export default function Home() {
     setPanelOriginEl(null);
   }, []);
 
+  // 3D 场景点击 dock 节点时打开面板（无 DOM 原点用作动画起点）
+  const handle3DToggle = useCallback(
+    (id: string) => togglePanel(id, null),
+    [togglePanel],
+  );
+
   // Escape 关闭面板
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -244,6 +251,7 @@ export default function Home() {
           </div>
 
           <div className="topbar-actions">
+            <ThemeToggle />
             {user ? (
               <>
                 <span className="user-chip">
@@ -305,7 +313,12 @@ export default function Home() {
               </div>
             </section>
           ) : (
-            <ThreeJSScene dimmed={!!activePanelId} />
+            <ThreeJSScene
+              dimmed={!!activePanelId}
+              dockModules={dockModules}
+              activePanelId={activePanelId}
+              onTogglePanel={handle3DToggle}
+            />
           )}
         </main>
 
