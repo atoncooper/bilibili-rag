@@ -1,8 +1,9 @@
-import { FolderHeart, MessageSquareText, Settings } from "lucide-react";
+import { BarChart3, FolderHeart, MessageSquareText, Settings } from "lucide-react";
 import { DockModule } from "@/lib/dock-registry";
 import FavoritesPanel from "./favorites";
 import ChatHistoryPanel from "./chat-history";
 import SettingsPanel from "./settings";
+import BillingPanel from "./billing";
 
 export const dockModules: DockModule[] = [
   {
@@ -24,6 +25,13 @@ export const dockModules: DockModule[] = [
     icon: Settings,
     title: "API 设置",
     panel: SettingsPanel,
-    defaultSize: { width: 720, height: 620 },
+    defaultSize: { width: 1296, height: 806 },
+  },
+  {
+    id: "billing",
+    icon: BarChart3,
+    title: "用量计费",
+    panel: BillingPanel,
+    defaultSize: { width: 1156, height: 672 },
   },
 ];

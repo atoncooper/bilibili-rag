@@ -410,17 +410,27 @@ export const chatApi = {
         ),
 
     // === 新增：流式接口（替代裸调 fetch）===
-    askStream: (payload: ChatRequestPayload): Promise<ReadableStream<Uint8Array>> => {
-        return fetch(`${API_BASE_URL}/chat/ask/stream`, {
+    askStream: async (payload: ChatRequestPayload): Promise<ReadableStream<Uint8Array>> => {
+        const res = await fetch(`${API_BASE_URL}/chat/ask/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
-        }).then((res) => {
-            if (!res.ok || !res.body) {
-                throw new Error("流式接口不可用");
-            }
-            return res.body;
         });
+
+        // 会话失效时自动清除登录状态并刷新页面（与 request() 保持一致）
+        if (res.status === 401) {
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("bili_session");
+                localStorage.removeItem("bili_user");
+                window.location.href = "/";
+            }
+            throw new Error("会话已过期，请重新登录");
+        }
+
+        if (!res.ok || !res.body) {
+            throw new Error("流式接口不可用");
+        }
+        return res.body;
     },
 
     // === 新增：会话管理 ===
@@ -595,6 +605,10 @@ export interface CredentialsStatus {
     embedding_masked_key: string | null;
     embedding_base_url: string | null;
     embedding_model: string | null;
+    asr_is_configured: boolean;
+    asr_masked_key: string | null;
+    asr_base_url: string | null;
+    asr_model: string | null;
     updated_at: string | null;
 }
 
@@ -605,6 +619,9 @@ export interface SetCredentialsParams {
     embedding_api_key?: string;
     embedding_base_url?: string;
     embedding_model?: string;
+    asr_api_key?: string;
+    asr_base_url?: string;
+    asr_model?: string;
 }
 
 export const settingsApi = {
@@ -625,4 +642,88 @@ export const settingsApi = {
             `/settings/credentials?session_id=${sessionId}`,
             { method: "DELETE" }
         ),
+};
+
+// ==================== 多 Provider Credential 管理 ====================
+
+export interface CredentialItem {
+    id: number;
+    name: string;
+    provider: string;
+    masked_key: string;
+    base_url: string | null;
+    default_model: string | null;
+    is_default: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CredentialCreateParams {
+    name: string;
+    provider: string;
+    api_key: string;
+    base_url?: string;
+    default_model?: string;
+    is_default?: boolean;
+}
+
+export interface CredentialUpdateParams {
+    name?: string;
+    api_key?: string;
+    base_url?: string;
+    default_model?: string;
+    is_default?: boolean;
+}
+
+export const credentialsApi = {
+    list: (sessionId: string) =>
+        request<CredentialItem[]>(`/credentials?session_id=${sessionId}`),
+
+    create: (sessionId: string, data: CredentialCreateParams) =>
+        request<CredentialItem>(`/credentials?session_id=${sessionId}`, {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    update: (sessionId: string, id: number, data: CredentialUpdateParams) =>
+        request<CredentialItem>(`/credentials/${id}?session_id=${sessionId}`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+        }),
+
+    delete: (sessionId: string, id: number) =>
+        request(`/credentials/${id}?session_id=${sessionId}`, { method: "DELETE" }),
+
+    setDefault: (sessionId: string, id: number) =>
+        request(`/credentials/${id}/default?session_id=${sessionId}`, { method: "POST" }),
+};
+
+// ==================== 计费/用量 ====================
+
+export interface ProviderUsage {
+    provider: string;
+    total_tokens: number;
+    api_calls: number;
+    cost_estimate: number;
+}
+
+export interface CredentialUsageItem {
+    credential_id: number | null;
+    name: string;
+    provider: string;
+    total_tokens: number;
+    api_calls: number;
+    cost_estimate: number;
+}
+
+export interface UsageSummary {
+    total_tokens: number;
+    total_api_calls: number;
+    by_provider: ProviderUsage[];
+    by_credential: CredentialUsageItem[];
+}
+
+export const billingApi = {
+    getSummary: (sessionId: string, days = 30) =>
+        request<UsageSummary>(`/billing/summary?session_id=${sessionId}&days=${days}`),
 };
